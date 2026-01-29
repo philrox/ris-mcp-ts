@@ -1,0 +1,249 @@
+/**
+ * Parser for RIS API responses.
+ *
+ * This module provides functions to parse raw API responses into
+ * structured Document and SearchResult models.
+ */
+
+import type {
+  Citation,
+  ContentUrl,
+  Document,
+  NormalizedSearchResults,
+  RawContentReference,
+  RawContentUrl,
+  RawDocumentReference,
+  SearchResult,
+} from "./types.js";
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Extract text from various API response formats.
+ * Handles strings, objects with #text, and objects with item.
+ */
+export function extractText(elem: unknown): string | null {
+  if (elem === null || elem === undefined) {
+    return null;
+  }
+  if (typeof elem === "string") {
+    const trimmed = elem.trim();
+    return trimmed || null;
+  }
+  if (typeof elem === "object") {
+    const obj = elem as Record<string, unknown>;
+    const text = obj["#text"] ?? obj["item"];
+    if (typeof text === "string") {
+      return text.trim() || null;
+    }
+    if (Array.isArray(text)) {
+      return text.join(", ");
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract URL by DataType from content URL list.
+ */
+function getUrlByType(contentUrlList: RawContentUrl[], dataType: string): string | null {
+  for (const item of contentUrlList) {
+    if (item.DataType === dataType && item.Url) {
+      return item.Url;
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract content URLs from raw content reference.
+ */
+export function extractContentUrls(contentRef: RawContentReference | undefined): ContentUrl {
+  if (!contentRef) {
+    return { html: null, xml: null, pdf: null, rtf: null };
+  }
+
+  const urls = contentRef.Urls;
+  if (!urls) {
+    return { html: null, xml: null, pdf: null, rtf: null };
+  }
+
+  let contentUrlList = urls.ContentUrl;
+  if (!contentUrlList) {
+    return { html: null, xml: null, pdf: null, rtf: null };
+  }
+
+  // Ensure it's an array
+  if (!Array.isArray(contentUrlList)) {
+    contentUrlList = [contentUrlList];
+  }
+
+  return {
+    html: getUrlByType(contentUrlList, "Html"),
+    xml: getUrlByType(contentUrlList, "Xml"),
+    pdf: getUrlByType(contentUrlList, "Pdf"),
+    rtf: getUrlByType(contentUrlList, "Rtf"),
+  };
+}
+
+// =============================================================================
+// Document Parsing
+// =============================================================================
+
+/**
+ * Parse a document reference from the API response into a Document model.
+ */
+export function parseDocumentFromApiResponse(docRef: RawDocumentReference): Document {
+  const data = docRef.Data ?? {};
+  const metadaten = data.Metadaten ?? {};
+  const dokumentliste = data.Dokumentliste ?? {};
+  const technisch = metadaten.Technisch ?? {};
+  const allgemein = metadaten.Allgemein ?? {};
+
+  // Extract content reference - can be a dict or array of dicts
+  const contentRefRaw = dokumentliste.ContentReference;
+  let contentRef: RawContentReference | undefined;
+
+  if (Array.isArray(contentRefRaw)) {
+    // Find MainDocument or use first entry
+    contentRef = contentRefRaw.find((ref) => ref.ContentType === "MainDocument") ?? contentRefRaw[0];
+  } else {
+    contentRef = contentRefRaw;
+  }
+
+  // Extract content URLs
+  const contentUrls = extractContentUrls(contentRef);
+
+  // Extract metadata from Bundesrecht, Landesrecht, or Judikatur
+  const bundesrecht = metadaten.Bundesrecht;
+  const landesrecht = metadaten.Landesrecht;
+  const judikatur = metadaten.Judikatur;
+
+  // Initialize citation variables
+  let kurztitelElem: unknown = "";
+  let langtitelElem: unknown = "";
+  let kundmachungsorgan: unknown = "";
+  let paragraph: unknown = "";
+  let inkrafttreten: unknown = "";
+  let ausserkrafttreten: unknown = "";
+  let eli: unknown = "";
+  let gesamteRechtsvorschriftUrl = "";
+  let geschaeftszahl = "";
+  let entscheidungsdatum: unknown = "";
+
+  if (bundesrecht) {
+    // Handle Bundesrecht
+    const nested = bundesrecht.BrKons ?? {};
+    kurztitelElem = bundesrecht.Kurztitel ?? "";
+    langtitelElem = bundesrecht.Langtitel ?? bundesrecht.Titel ?? "";
+    kundmachungsorgan = nested.Kundmachungsorgan ?? "";
+    paragraph = nested.ArtikelParagraphAnlage ?? "";
+    inkrafttreten = nested.Inkrafttretensdatum ?? "";
+    ausserkrafttreten = nested.Ausserkrafttretensdatum ?? "";
+    eli = bundesrecht.Eli ?? "";
+    gesamteRechtsvorschriftUrl = nested.GesamteRechtsvorschriftUrl ?? "";
+  } else if (landesrecht) {
+    // Handle Landesrecht
+    const nested = landesrecht.LrKons ?? {};
+    kurztitelElem = landesrecht.Kurztitel ?? "";
+    langtitelElem = landesrecht.Langtitel ?? landesrecht.Titel ?? "";
+    kundmachungsorgan = nested.Kundmachungsorgan ?? "";
+    paragraph = nested.ArtikelParagraphAnlage ?? "";
+    inkrafttreten = nested.Inkrafttretensdatum ?? "";
+    ausserkrafttreten = nested.Ausserkrafttretensdatum ?? "";
+    eli = landesrecht.Eli ?? "";
+    gesamteRechtsvorschriftUrl = nested.GesamteRechtsvorschriftUrl ?? "";
+  } else if (judikatur) {
+    // Handle Judikatur (court decisions)
+    const geschaeftszahlElem = judikatur.Geschaeftszahl;
+    if (typeof geschaeftszahlElem === "object" && geschaeftszahlElem !== null) {
+      const item = (geschaeftszahlElem as { item?: string | string[] }).item;
+      if (Array.isArray(item)) {
+        geschaeftszahl = item.join(", ");
+      } else if (typeof item === "string") {
+        geschaeftszahl = item;
+      }
+    } else if (typeof geschaeftszahlElem === "string") {
+      geschaeftszahl = geschaeftszahlElem;
+    }
+
+    entscheidungsdatum = judikatur.Entscheidungsdatum ?? "";
+
+    // Get court-specific nested data
+    const courtNested = judikatur.Vfgh ?? judikatur.Vwgh ?? judikatur.Justiz ?? judikatur.Bvwg;
+    const leitsatz = courtNested?.Leitsatz ?? "";
+
+    kurztitelElem = geschaeftszahl; // Use Geschaeftszahl as kurztitel
+    langtitelElem = leitsatz; // Use Leitsatz as langtitel
+  }
+
+  // Build Citation
+  const citation: Citation = {
+    kurztitel: extractText(kurztitelElem),
+    langtitel: extractText(langtitelElem),
+    kundmachungsorgan: extractText(kundmachungsorgan),
+    paragraph: extractText(paragraph),
+    eli: extractText(eli),
+    inkrafttreten: extractText(inkrafttreten) ?? extractText(entscheidungsdatum),
+    ausserkrafttreten: extractText(ausserkrafttreten),
+  };
+
+  // Extract document number and application from Technisch section
+  const dokumentnummer = technisch.ID ?? "";
+  const applikation = technisch.Applikation ?? "";
+
+  // Extract title
+  let titel = extractText(kurztitelElem) ?? "";
+  if (!titel && geschaeftszahl) {
+    titel = `GZ ${geschaeftszahl}`;
+  }
+  if (!titel && contentRef) {
+    const name = contentRef.Name;
+    if (typeof name === "string") {
+      titel = name;
+    } else if (typeof name === "object" && name !== null) {
+      titel = name["#text"] ?? "";
+    }
+  }
+
+  // Build document URLs
+  const dokumentUrl = allgemein.DokumentUrl ?? null;
+
+  return {
+    dokumentnummer,
+    applikation,
+    titel,
+    kurztitel: extractText(kurztitelElem),
+    citation,
+    content_urls: contentUrls,
+    dokument_url: dokumentUrl,
+    gesamte_rechtsvorschrift_url: gesamteRechtsvorschriftUrl || null,
+  };
+}
+
+// =============================================================================
+// Search Results Parsing
+// =============================================================================
+
+/**
+ * Parse API response into a SearchResult model.
+ */
+export function parseSearchResults(apiResponse: NormalizedSearchResults): SearchResult {
+  const totalHits = apiResponse.hits;
+  const page = apiResponse.page_number;
+  const pageSize = apiResponse.page_size;
+  const rawDocuments = apiResponse.documents;
+
+  const documents = rawDocuments.map(parseDocumentFromApiResponse);
+  const hasMore = page * pageSize < totalHits;
+
+  return {
+    total_hits: totalHits,
+    page,
+    page_size: pageSize,
+    has_more: hasMore,
+    documents,
+  };
+}
