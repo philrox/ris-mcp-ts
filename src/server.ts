@@ -28,6 +28,26 @@ import { findDocumentByDokumentnummer, parseSearchResults } from "./parser.js";
 import { limitToDokumenteProSeite } from "./types.js";
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * Mapping of Bundesland names to their API parameter suffixes.
+ * The RIS API expects boolean flags in the format `Bundesland.SucheIn[StateName]=true`.
+ */
+const BUNDESLAND_MAPPING: Record<string, string> = {
+  Wien: "SucheInWien",
+  Niederoesterreich: "SucheInNiederoesterreich",
+  Oberoesterreich: "SucheInOberoesterreich",
+  Salzburg: "SucheInSalzburg",
+  Tirol: "SucheInTirol",
+  Vorarlberg: "SucheInVorarlberg",
+  Kaernten: "SucheInKaernten",
+  Steiermark: "SucheInSteiermark",
+  Burgenland: "SucheInBurgenland",
+};
+
+// =============================================================================
 // Server Setup
 // =============================================================================
 
@@ -230,8 +250,13 @@ Example: suchworte="Bauordnung", bundesland="Salzburg"`,
     };
 
     if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel.Suchworte"] = titel;
-    if (bundesland) params["Bundesland"] = bundesland;
+    if (titel) params["Titel"] = titel;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
 
     try {
       const apiResponse = await searchLandesrecht(params);

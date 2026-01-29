@@ -359,6 +359,165 @@ describe("Bundesrecht API parameter mapping", () => {
 // Limit Mapping Tests (used by tools)
 // =============================================================================
 
+// =============================================================================
+// Landesrecht API Parameter Mapping Tests
+// =============================================================================
+
+describe("Landesrecht API parameter mapping", () => {
+  // Bundesland mapping constant (mirrors server.ts)
+  const BUNDESLAND_MAPPING: Record<string, string> = {
+    Wien: "SucheInWien",
+    Niederoesterreich: "SucheInNiederoesterreich",
+    Oberoesterreich: "SucheInOberoesterreich",
+    Salzburg: "SucheInSalzburg",
+    Tirol: "SucheInTirol",
+    Vorarlberg: "SucheInVorarlberg",
+    Kaernten: "SucheInKaernten",
+    Steiermark: "SucheInSteiermark",
+    Burgenland: "SucheInBurgenland",
+  };
+
+  // Re-implement the mapping logic for testing
+  function buildLandesrechtParams(args: {
+    suchworte?: string;
+    titel?: string;
+    bundesland?: string;
+    applikation?: string;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const { suchworte, titel, bundesland, applikation = "LrKons", seite = 1, limit = 20 } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    return params;
+  }
+
+  describe("titel parameter", () => {
+    it("should map titel to 'Titel' API parameter (not Titel.Suchworte)", () => {
+      const params = buildLandesrechtParams({ titel: "Bauordnung" });
+
+      expect(params["Titel"]).toBe("Bauordnung");
+      expect(params["Titel.Suchworte"]).toBeUndefined();
+    });
+  });
+
+  describe("bundesland parameter", () => {
+    it("should map Salzburg to Bundesland.SucheInSalzburg=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Salzburg", suchworte: "Bauordnung" });
+
+      expect(params["Bundesland.SucheInSalzburg"]).toBe("true");
+      expect(params["Bundesland"]).toBeUndefined();
+    });
+
+    it("should map Wien to Bundesland.SucheInWien=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Wien", suchworte: "Bauordnung" });
+
+      expect(params["Bundesland.SucheInWien"]).toBe("true");
+      expect(params["Bundesland"]).toBeUndefined();
+    });
+
+    it("should map Niederoesterreich to Bundesland.SucheInNiederoesterreich=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Niederoesterreich", suchworte: "test" });
+
+      expect(params["Bundesland.SucheInNiederoesterreich"]).toBe("true");
+    });
+
+    it("should map Oberoesterreich to Bundesland.SucheInOberoesterreich=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Oberoesterreich", suchworte: "test" });
+
+      expect(params["Bundesland.SucheInOberoesterreich"]).toBe("true");
+    });
+
+    it("should map Tirol to Bundesland.SucheInTirol=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Tirol", suchworte: "test" });
+
+      expect(params["Bundesland.SucheInTirol"]).toBe("true");
+    });
+
+    it("should map Vorarlberg to Bundesland.SucheInVorarlberg=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Vorarlberg", suchworte: "test" });
+
+      expect(params["Bundesland.SucheInVorarlberg"]).toBe("true");
+    });
+
+    it("should map Kaernten to Bundesland.SucheInKaernten=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Kaernten", suchworte: "test" });
+
+      expect(params["Bundesland.SucheInKaernten"]).toBe("true");
+    });
+
+    it("should map Steiermark to Bundesland.SucheInSteiermark=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Steiermark", suchworte: "test" });
+
+      expect(params["Bundesland.SucheInSteiermark"]).toBe("true");
+    });
+
+    it("should map Burgenland to Bundesland.SucheInBurgenland=true", () => {
+      const params = buildLandesrechtParams({ bundesland: "Burgenland", suchworte: "test" });
+
+      expect(params["Bundesland.SucheInBurgenland"]).toBe("true");
+    });
+
+    it("should not add any Bundesland parameter for unknown values", () => {
+      const params = buildLandesrechtParams({ bundesland: "UnknownState", suchworte: "test" });
+
+      // Check that no Bundesland.* keys exist
+      const bundeslandKeys = Object.keys(params).filter((k) => k.startsWith("Bundesland"));
+      expect(bundeslandKeys).toHaveLength(0);
+    });
+
+    it("should not add bundesland parameter when not provided", () => {
+      const params = buildLandesrechtParams({ suchworte: "test" });
+
+      const bundeslandKeys = Object.keys(params).filter((k) => k.startsWith("Bundesland"));
+      expect(bundeslandKeys).toHaveLength(0);
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildLandesrechtParams({
+        suchworte: "Bauordnung",
+        titel: "Baugesetz",
+        bundesland: "Salzburg",
+        applikation: "LrKons",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Suchworte"]).toBe("Bauordnung");
+      expect(params["Titel"]).toBe("Baugesetz");
+      expect(params["Bundesland.SucheInSalzburg"]).toBe("true");
+      expect(params["Applikation"]).toBe("LrKons");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
+// =============================================================================
+// Limit Mapping Tests (used by tools)
+// =============================================================================
+
 describe("Limit to DokumenteProSeite mapping", () => {
   // Re-implement the mapping logic for testing
   function limitToDokumenteProSeite(limit: number): string {
