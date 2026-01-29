@@ -98,7 +98,7 @@ Example queries:
     paragraph: z
       .string()
       .optional()
-      .describe('Search for specific section (e.g., "1319a", "25")'),
+      .describe('Paragraph number to search for (e.g., "1295" for §1295)'),
     applikation: z
       .string()
       .default("BrKons")
@@ -147,8 +147,12 @@ Example queries:
     };
 
     if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel.Suchworte"] = titel;
-    if (paragraph) params["ArtikelParagraphAnlage"] = paragraph;
+    if (titel) params["Titel"] = titel;
+    if (paragraph) {
+      params["Abschnitt.Von"] = paragraph;
+      params["Abschnitt.Bis"] = paragraph;
+      params["Abschnitt.Typ"] = "Paragraph";
+    }
     if (fassung_vom) params["FassungVom"] = fassung_vom;
 
     try {

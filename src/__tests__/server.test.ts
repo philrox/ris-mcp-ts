@@ -249,6 +249,113 @@ describe("Dokumentnummer prefix routing", () => {
 });
 
 // =============================================================================
+// Bundesrecht API Parameter Mapping Tests
+// =============================================================================
+
+describe("Bundesrecht API parameter mapping", () => {
+  // Re-implement the mapping logic for testing
+  function buildBundesrechtParams(args: {
+    suchworte?: string;
+    titel?: string;
+    paragraph?: string;
+    applikation?: string;
+    fassung_vom?: string;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const { suchworte, titel, paragraph, applikation = "BrKons", fassung_vom, seite = 1, limit = 20 } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (paragraph) {
+      params["Abschnitt.Von"] = paragraph;
+      params["Abschnitt.Bis"] = paragraph;
+      params["Abschnitt.Typ"] = "Paragraph";
+    }
+    if (fassung_vom) params["FassungVom"] = fassung_vom;
+
+    return params;
+  }
+
+  describe("titel parameter", () => {
+    it("should map titel to 'Titel' API parameter", () => {
+      const params = buildBundesrechtParams({ titel: "ABGB" });
+
+      expect(params["Titel"]).toBe("ABGB");
+      expect(params["Titel.Suchworte"]).toBeUndefined();
+    });
+
+    it("should not include Titel when titel is not provided", () => {
+      const params = buildBundesrechtParams({ suchworte: "Mietrecht" });
+
+      expect(params["Titel"]).toBeUndefined();
+    });
+  });
+
+  describe("paragraph parameter", () => {
+    it("should map paragraph to Abschnitt.Von, Abschnitt.Bis, and Abschnitt.Typ", () => {
+      const params = buildBundesrechtParams({ titel: "ABGB", paragraph: "1295" });
+
+      expect(params["Abschnitt.Von"]).toBe("1295");
+      expect(params["Abschnitt.Bis"]).toBe("1295");
+      expect(params["Abschnitt.Typ"]).toBe("Paragraph");
+      expect(params["ArtikelParagraphAnlage"]).toBeUndefined();
+    });
+
+    it("should not include Abschnitt fields when paragraph is not provided", () => {
+      const params = buildBundesrechtParams({ titel: "ABGB" });
+
+      expect(params["Abschnitt.Von"]).toBeUndefined();
+      expect(params["Abschnitt.Bis"]).toBeUndefined();
+      expect(params["Abschnitt.Typ"]).toBeUndefined();
+    });
+
+    it("should handle paragraph with letters (e.g., 1319a)", () => {
+      const params = buildBundesrechtParams({ paragraph: "1319a" });
+
+      expect(params["Abschnitt.Von"]).toBe("1319a");
+      expect(params["Abschnitt.Bis"]).toBe("1319a");
+      expect(params["Abschnitt.Typ"]).toBe("Paragraph");
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildBundesrechtParams({
+        suchworte: "Schadenersatz",
+        titel: "ABGB",
+        paragraph: "1295",
+        applikation: "BrKons",
+        fassung_vom: "2024-01-01",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Suchworte"]).toBe("Schadenersatz");
+      expect(params["Titel"]).toBe("ABGB");
+      expect(params["Abschnitt.Von"]).toBe("1295");
+      expect(params["Abschnitt.Bis"]).toBe("1295");
+      expect(params["Abschnitt.Typ"]).toBe("Paragraph");
+      expect(params["Applikation"]).toBe("BrKons");
+      expect(params["FassungVom"]).toBe("2024-01-01");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
+// =============================================================================
 // Limit Mapping Tests (used by tools)
 // =============================================================================
 
