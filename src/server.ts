@@ -24,7 +24,7 @@ import {
   truncateResponse,
   type DocumentMetadata,
 } from "./formatting.js";
-import { parseDocumentFromApiResponse, parseSearchResults } from "./parser.js";
+import { findDocumentByDokumentnummer, parseSearchResults } from "./parser.js";
 import { limitToDokumenteProSeite } from "./types.js";
 
 // =============================================================================
@@ -449,22 +449,38 @@ Note: For long documents, content may be truncated. Use specific searches to nar
           });
         }
 
-        if (!apiResponse.documents || apiResponse.documents.length === 0) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text:
-                  `**Fehler:** Kein Dokument mit der Nummer \`${dokumentnummer}\` gefunden.\n\n` +
-                  "Bitte pruefe die Dokumentnummer oder verwende eine Suche, " +
-                  "um das gewuenschte Dokument zu finden.",
-              },
-            ],
-          };
+        // Find the document with matching dokumentnummer (don't blindly take first result)
+        const findResult = findDocumentByDokumentnummer(apiResponse.documents, dokumentnummer);
+
+        if (!findResult.success) {
+          if (findResult.error === "no_documents") {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text:
+                    `**Fehler:** Kein Dokument mit der Nummer \`${dokumentnummer}\` gefunden.\n\n` +
+                    "Bitte pruefe die Dokumentnummer oder verwende eine Suche, " +
+                    "um das gewuenschte Dokument zu finden.",
+                },
+              ],
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text:
+                    `**Fehler:** Dokument \`${dokumentnummer}\` nicht in den Suchergebnissen gefunden.\n\n` +
+                    `Die Suche ergab ${findResult.totalResults} Ergebnisse, aber keines mit dieser Dokumentnummer.\n` +
+                    `Bitte verwende eine alternative Suche oder die direkte URL.`,
+                },
+              ],
+            };
+          }
         }
 
-        // Parse the first document
-        const doc = parseDocumentFromApiResponse(apiResponse.documents[0]);
+        const doc = findResult.document;
         contentUrl = doc.content_urls.html ?? undefined;
 
         if (!contentUrl) {

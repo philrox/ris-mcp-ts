@@ -224,6 +224,46 @@ export function parseDocumentFromApiResponse(docRef: RawDocumentReference): Docu
 }
 
 // =============================================================================
+// Document Matching
+// =============================================================================
+
+/**
+ * Result type for finding a document by dokumentnummer.
+ */
+export type FindDocumentResult =
+  | { success: true; document: Document }
+  | { success: false; error: "no_documents" | "not_found"; totalResults?: number };
+
+/**
+ * Find a document by dokumentnummer from a list of raw API document references.
+ *
+ * This function parses all documents and finds the one matching the requested
+ * dokumentnummer rather than blindly taking the first result (which may not
+ * be the correct document when the API returns multiple results).
+ *
+ * @param rawDocuments - Raw document references from the API response
+ * @param dokumentnummer - The document number to find
+ * @returns Result object indicating success with the document, or failure with error type
+ */
+export function findDocumentByDokumentnummer(
+  rawDocuments: RawDocumentReference[],
+  dokumentnummer: string
+): FindDocumentResult {
+  if (!rawDocuments || rawDocuments.length === 0) {
+    return { success: false, error: "no_documents" };
+  }
+
+  const parsedDocs = rawDocuments.map(parseDocumentFromApiResponse);
+  const doc = parsedDocs.find((d) => d.dokumentnummer === dokumentnummer);
+
+  if (!doc) {
+    return { success: false, error: "not_found", totalResults: rawDocuments.length };
+  }
+
+  return { success: true, document: doc };
+}
+
+// =============================================================================
 // Search Results Parsing
 // =============================================================================
 
