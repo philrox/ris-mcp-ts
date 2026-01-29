@@ -14,6 +14,8 @@ import {
   searchLandesrecht,
   searchJudikatur,
   getDocumentContent,
+  constructDocumentUrl,
+  getDocumentByNumber,
 } from "../client.js";
 
 // =============================================================================
@@ -545,6 +547,278 @@ describe("getDocumentContent", () => {
 
     const result = await getDocumentContent("https://example.com/doc.html");
     expect(result).toBe("content");
+  });
+});
+
+// =============================================================================
+// Integration Tests
+// =============================================================================
+
+// =============================================================================
+// constructDocumentUrl Tests
+// =============================================================================
+
+describe("constructDocumentUrl", () => {
+  it("should construct URL for Bundesrecht (NOR prefix)", () => {
+    const url = constructDocumentUrl("NOR12019037");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Burgenland (LBG prefix)", () => {
+    const url = constructDocumentUrl("LBG12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrBgld/LBG12345678/LBG12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Kaernten (LKT prefix)", () => {
+    const url = constructDocumentUrl("LKT12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrK/LKT12345678/LKT12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Niederoesterreich (LNO prefix)", () => {
+    const url = constructDocumentUrl("LNO12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrNO/LNO12345678/LNO12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Oberoesterreich (LOO prefix)", () => {
+    const url = constructDocumentUrl("LOO12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrOO/LOO12345678/LOO12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Salzburg (LSB prefix)", () => {
+    const url = constructDocumentUrl("LSB12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrSbg/LSB12345678/LSB12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Steiermark (LST prefix)", () => {
+    const url = constructDocumentUrl("LST12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrStmk/LST12345678/LST12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Tirol (LTI prefix)", () => {
+    const url = constructDocumentUrl("LTI12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrT/LTI12345678/LTI12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Vorarlberg (LVO prefix)", () => {
+    const url = constructDocumentUrl("LVO12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrVbg/LVO12345678/LVO12345678.html"
+    );
+  });
+
+  it("should construct URL for Landesrecht Wien (LWI prefix)", () => {
+    const url = constructDocumentUrl("LWI12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/LrW/LWI12345678/LWI12345678.html"
+    );
+  });
+
+  it("should construct URL for VwGH Judikatur (JWR prefix)", () => {
+    const url = constructDocumentUrl("JWR12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Vwgh/JWR12345678/JWR12345678.html"
+    );
+  });
+
+  it("should construct URL for VfGH Judikatur (JFR prefix)", () => {
+    const url = constructDocumentUrl("JFR12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Vfgh/JFR12345678/JFR12345678.html"
+    );
+  });
+
+  it("should construct URL for Justiz (JWT prefix)", () => {
+    const url = constructDocumentUrl("JWT12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Justiz/JWT12345678/JWT12345678.html"
+    );
+  });
+
+  it("should construct URL for BVwG (BVWG prefix)", () => {
+    const url = constructDocumentUrl("BVWG12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Bvwg/BVWG12345678/BVWG12345678.html"
+    );
+  });
+
+  it("should construct URL for LVwG (LVWG prefix)", () => {
+    const url = constructDocumentUrl("LVWG12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Lvwg/LVWG12345678/LVWG12345678.html"
+    );
+  });
+
+  it("should construct URL for DSB (DSB prefix)", () => {
+    const url = constructDocumentUrl("DSB12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Dsk/DSB12345678/DSB12345678.html"
+    );
+  });
+
+  it("should return null for unknown prefix", () => {
+    const url = constructDocumentUrl("UNKNOWN12345");
+    expect(url).toBeNull();
+  });
+
+  it("should return null for empty string", () => {
+    const url = constructDocumentUrl("");
+    expect(url).toBeNull();
+  });
+
+  it("should handle longer prefixes correctly (BVWG vs BVW)", () => {
+    // Ensure BVWG is not matched by a hypothetical shorter prefix
+    const url = constructDocumentUrl("BVWG_W123_2000000_1_00");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Bvwg/BVWG_W123_2000000_1_00/BVWG_W123_2000000_1_00.html"
+    );
+  });
+});
+
+// =============================================================================
+// getDocumentByNumber Tests
+// =============================================================================
+
+describe("getDocumentByNumber", () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("should return success with HTML content for valid document", async () => {
+    const htmlContent = "<html><body>Legal document content</body></html>";
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(htmlContent),
+    });
+
+    const result = await getDocumentByNumber("NOR12019037");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.html).toBe(htmlContent);
+      expect(result.url).toBe(
+        "https://ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.html"
+      );
+    }
+  });
+
+  it("should call correct URL", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve("<html></html>"),
+    });
+
+    await getDocumentByNumber("NOR12019037");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.html",
+      expect.any(Object)
+    );
+  });
+
+  it("should return error for unknown prefix", async () => {
+    const result = await getDocumentByNumber("UNKNOWN12345");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Unbekanntes Dokumentnummer-Prefix");
+    }
+
+    // Should not have called fetch
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should return error on HTTP 404", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: () => Promise.resolve("Not found"),
+    });
+
+    const result = await getDocumentByNumber("NOR99999999");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.statusCode).toBe(404);
+    }
+  });
+
+  it("should return error on network failure", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+
+    const result = await getDocumentByNumber("NOR12019037");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Network error");
+    }
+  });
+
+  it("should handle timeout", async () => {
+    mockFetch.mockImplementation(() => {
+      const error = new Error("Aborted");
+      error.name = "AbortError";
+      return Promise.reject(error);
+    });
+
+    const result = await getDocumentByNumber("NOR12019037", 100);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("timed out");
+    }
+  });
+
+  it("should work with Landesrecht documents", async () => {
+    const htmlContent = "<html><body>Landesrecht content</body></html>";
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(htmlContent),
+    });
+
+    const result = await getDocumentByNumber("LWI12345678");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.url).toContain("LrW");
+    }
+  });
+
+  it("should work with Judikatur documents", async () => {
+    const htmlContent = "<html><body>Court decision</body></html>";
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(htmlContent),
+    });
+
+    const result = await getDocumentByNumber("JFR12345678");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.url).toContain("Vfgh");
+    }
   });
 });
 

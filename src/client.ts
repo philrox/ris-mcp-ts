@@ -258,3 +258,98 @@ export async function getDocumentContent(
     throw new RISAPIError(`Request failed fetching document: ${String(e)}`);
   }
 }
+
+// =============================================================================
+// Direct Document URL Construction
+// =============================================================================
+
+/**
+ * URL patterns for different document types based on Dokumentnummer prefix.
+ * The {dokumentnummer} placeholder will be replaced with the actual document number.
+ */
+const DOCUMENT_URL_PATTERNS: Record<string, string> = {
+  NOR: "https://ris.bka.gv.at/Dokumente/Bundesnormen/{dokumentnummer}/{dokumentnummer}.html",
+  LBG: "https://ris.bka.gv.at/Dokumente/LrBgld/{dokumentnummer}/{dokumentnummer}.html",
+  LKT: "https://ris.bka.gv.at/Dokumente/LrK/{dokumentnummer}/{dokumentnummer}.html",
+  LNO: "https://ris.bka.gv.at/Dokumente/LrNO/{dokumentnummer}/{dokumentnummer}.html",
+  LOO: "https://ris.bka.gv.at/Dokumente/LrOO/{dokumentnummer}/{dokumentnummer}.html",
+  LSB: "https://ris.bka.gv.at/Dokumente/LrSbg/{dokumentnummer}/{dokumentnummer}.html",
+  LST: "https://ris.bka.gv.at/Dokumente/LrStmk/{dokumentnummer}/{dokumentnummer}.html",
+  LTI: "https://ris.bka.gv.at/Dokumente/LrT/{dokumentnummer}/{dokumentnummer}.html",
+  LVO: "https://ris.bka.gv.at/Dokumente/LrVbg/{dokumentnummer}/{dokumentnummer}.html",
+  LWI: "https://ris.bka.gv.at/Dokumente/LrW/{dokumentnummer}/{dokumentnummer}.html",
+  JWR: "https://ris.bka.gv.at/Dokumente/Vwgh/{dokumentnummer}/{dokumentnummer}.html",
+  JFR: "https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html",
+  JWT: "https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html",
+  BVWG: "https://ris.bka.gv.at/Dokumente/Bvwg/{dokumentnummer}/{dokumentnummer}.html",
+  LVWG: "https://ris.bka.gv.at/Dokumente/Lvwg/{dokumentnummer}/{dokumentnummer}.html",
+  DSB: "https://ris.bka.gv.at/Dokumente/Dsk/{dokumentnummer}/{dokumentnummer}.html",
+};
+
+/**
+ * Construct a direct document URL based on the Dokumentnummer prefix.
+ *
+ * @param dokumentnummer - The RIS document number (e.g., "NOR12019037")
+ * @returns The constructed URL or null if prefix is unknown
+ */
+export function constructDocumentUrl(dokumentnummer: string): string | null {
+  // Find matching prefix (check longer prefixes first to avoid false matches)
+  const prefixes = Object.keys(DOCUMENT_URL_PATTERNS).sort((a, b) => b.length - a.length);
+
+  for (const prefix of prefixes) {
+    if (dokumentnummer.startsWith(prefix)) {
+      const pattern = DOCUMENT_URL_PATTERNS[prefix];
+      return pattern.replace(/{dokumentnummer}/g, dokumentnummer);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Result type for direct document fetch.
+ */
+export type DirectDocumentResult =
+  | { success: true; html: string; url: string }
+  | { success: false; error: string; statusCode?: number };
+
+/**
+ * Attempt to fetch a document directly by its Dokumentnummer using URL construction.
+ *
+ * This bypasses the search API and fetches the document directly if the
+ * Dokumentnummer prefix is known.
+ *
+ * @param dokumentnummer - The RIS document number (e.g., "NOR12019037")
+ * @param timeout - Request timeout in milliseconds
+ * @returns Result object with HTML content on success, or error details on failure
+ */
+export async function getDocumentByNumber(
+  dokumentnummer: string,
+  timeout = DEFAULT_TIMEOUT
+): Promise<DirectDocumentResult> {
+  const url = constructDocumentUrl(dokumentnummer);
+
+  if (!url) {
+    return {
+      success: false,
+      error: `Unbekanntes Dokumentnummer-Prefix: ${dokumentnummer.slice(0, 4)}`,
+    };
+  }
+
+  try {
+    const html = await getDocumentContent(url, timeout);
+    return { success: true, html, url };
+  } catch (e) {
+    if (e instanceof RISAPIError) {
+      return {
+        success: false,
+        error: e.message,
+        statusCode: e.statusCode,
+      };
+    }
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+}

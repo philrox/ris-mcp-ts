@@ -10,6 +10,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
+  getDocumentByNumber,
   getDocumentContent,
   RISAPIError,
   RISParsingError,
@@ -411,138 +412,161 @@ Note: For long documents, content may be truncated. Use specific searches to nar
 
     try {
       let contentUrl = inputUrl;
+      let htmlContent: string | undefined;
       let metadata: DocumentMetadata;
 
       if (dokumentnummer && !inputUrl) {
-        // Determine application type from dokumentnummer prefix
-        let apiResponse;
+        // Strategy: Try direct URL construction first, fallback to search API
+        const directResult = await getDocumentByNumber(dokumentnummer);
 
-        if (dokumentnummer.startsWith("NOR")) {
-          apiResponse = await searchBundesrecht({
-            Applikation: "BrKons",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
-        } else if (
-          dokumentnummer.startsWith("LBG") ||
-          dokumentnummer.startsWith("LNO") ||
-          dokumentnummer.startsWith("LST") ||
-          dokumentnummer.startsWith("LTI") ||
-          dokumentnummer.startsWith("LVO") ||
-          dokumentnummer.startsWith("LWI") ||
-          dokumentnummer.startsWith("LSB") ||
-          dokumentnummer.startsWith("LOO") ||
-          dokumentnummer.startsWith("LKT")
-        ) {
-          apiResponse = await searchLandesrecht({
-            Applikation: "LrKons",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
-        } else if (dokumentnummer.startsWith("JFR") || dokumentnummer.startsWith("JFT")) {
-          apiResponse = await searchJudikatur({
-            Applikation: "Vfgh",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
-        } else if (dokumentnummer.startsWith("JWR") || dokumentnummer.startsWith("JWT")) {
-          apiResponse = await searchJudikatur({
-            Applikation: "Vwgh",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
-        } else if (dokumentnummer.startsWith("BVWG")) {
-          apiResponse = await searchJudikatur({
-            Applikation: "Bvwg",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
-        } else if (dokumentnummer.startsWith("LVWG")) {
-          apiResponse = await searchJudikatur({
-            Applikation: "Lvwg",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
-        } else if (dokumentnummer.startsWith("DSB")) {
-          apiResponse = await searchJudikatur({
-            Applikation: "Dsk",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
+        if (directResult.success) {
+          // Direct fetch succeeded - use minimal metadata
+          htmlContent = directResult.html;
+          contentUrl = directResult.url;
+          metadata = {
+            dokumentnummer,
+            applikation: "Unbekannt",
+            titel: dokumentnummer,
+            kurztitel: null,
+            citation: {},
+            dokument_url: directResult.url,
+          };
         } else {
-          // Default to Justiz
-          apiResponse = await searchJudikatur({
-            Applikation: "Justiz",
-            Dokumentnummer: dokumentnummer,
-            DokumenteProSeite: "Ten",
-          });
-        }
+          // Direct fetch failed - fallback to search API
+          let apiResponse;
 
-        // Find the document with matching dokumentnummer (don't blindly take first result)
-        const findResult = findDocumentByDokumentnummer(apiResponse.documents, dokumentnummer);
-
-        if (!findResult.success) {
-          if (findResult.error === "no_documents") {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text:
-                    `**Fehler:** Kein Dokument mit der Nummer \`${dokumentnummer}\` gefunden.\n\n` +
-                    "Bitte pruefe die Dokumentnummer oder verwende eine Suche, " +
-                    "um das gewuenschte Dokument zu finden.",
-                },
-              ],
-            };
+          if (dokumentnummer.startsWith("NOR")) {
+            apiResponse = await searchBundesrecht({
+              Applikation: "BrKons",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (
+            dokumentnummer.startsWith("LBG") ||
+            dokumentnummer.startsWith("LNO") ||
+            dokumentnummer.startsWith("LST") ||
+            dokumentnummer.startsWith("LTI") ||
+            dokumentnummer.startsWith("LVO") ||
+            dokumentnummer.startsWith("LWI") ||
+            dokumentnummer.startsWith("LSB") ||
+            dokumentnummer.startsWith("LOO") ||
+            dokumentnummer.startsWith("LKT")
+          ) {
+            apiResponse = await searchLandesrecht({
+              Applikation: "LrKons",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("JFR") || dokumentnummer.startsWith("JFT")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "Vfgh",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("JWR") || dokumentnummer.startsWith("JWT")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "Vwgh",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("BVWG")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "Bvwg",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("LVWG")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "Lvwg",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("DSB")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "Dsk",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
           } else {
+            // Default to Justiz
+            apiResponse = await searchJudikatur({
+              Applikation: "Justiz",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          }
+
+          // Find the document with matching dokumentnummer (don't blindly take first result)
+          const findResult = findDocumentByDokumentnummer(apiResponse.documents, dokumentnummer);
+
+          if (!findResult.success) {
+            // Both direct fetch and search failed - provide helpful error
+            const directError = directResult.error;
+            if (findResult.error === "no_documents") {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text:
+                      `**Fehler:** Kein Dokument mit der Nummer \`${dokumentnummer}\` gefunden.\n\n` +
+                      `Direkter Abruf: ${directError}\n` +
+                      `Suche: Keine Ergebnisse.\n\n` +
+                      "Bitte pruefe die Dokumentnummer oder verwende eine Suche, " +
+                      "um das gewuenschte Dokument zu finden.",
+                  },
+                ],
+              };
+            } else {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text:
+                      `**Fehler:** Dokument \`${dokumentnummer}\` nicht gefunden.\n\n` +
+                      `Direkter Abruf: ${directError}\n` +
+                      `Suche: ${findResult.totalResults} Ergebnisse, aber keines mit dieser Dokumentnummer.\n\n` +
+                      `Bitte verwende eine alternative Suche oder die direkte URL.`,
+                  },
+                ],
+              };
+            }
+          }
+
+          const doc = findResult.document;
+          contentUrl = doc.content_urls.html ?? undefined;
+
+          if (!contentUrl) {
             return {
               content: [
                 {
                   type: "text" as const,
                   text:
-                    `**Fehler:** Dokument \`${dokumentnummer}\` nicht in den Suchergebnissen gefunden.\n\n` +
-                    `Die Suche ergab ${findResult.totalResults} Ergebnisse, aber keines mit dieser Dokumentnummer.\n` +
-                    `Bitte verwende eine alternative Suche oder die direkte URL.`,
+                    `**Fehler:** Keine Inhalts-URL fuer Dokument \`${dokumentnummer}\` verfuegbar.\n\n` +
+                    "Das Dokument hat moeglicherweise keinen abrufbaren Volltext.",
                 },
               ],
             };
           }
-        }
 
-        const doc = findResult.document;
-        contentUrl = doc.content_urls.html ?? undefined;
-
-        if (!contentUrl) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text:
-                  `**Fehler:** Keine Inhalts-URL fuer Dokument \`${dokumentnummer}\` verfuegbar.\n\n` +
-                  "Das Dokument hat moeglicherweise keinen abrufbaren Volltext.",
-              },
-            ],
+          // Build metadata from search result
+          metadata = {
+            dokumentnummer: doc.dokumentnummer,
+            applikation: doc.applikation,
+            titel: doc.titel,
+            kurztitel: doc.kurztitel,
+            citation: {
+              kurztitel: doc.citation.kurztitel,
+              langtitel: doc.citation.langtitel,
+              kundmachungsorgan: doc.citation.kundmachungsorgan,
+              paragraph: doc.citation.paragraph,
+              eli: doc.citation.eli,
+              inkrafttreten: doc.citation.inkrafttreten,
+              ausserkrafttreten: doc.citation.ausserkrafttreten,
+            },
+            dokument_url: doc.dokument_url,
+            gesamte_rechtsvorschrift_url: doc.gesamte_rechtsvorschrift_url,
           };
         }
-
-        // Build metadata
-        metadata = {
-          dokumentnummer: doc.dokumentnummer,
-          applikation: doc.applikation,
-          titel: doc.titel,
-          kurztitel: doc.kurztitel,
-          citation: {
-            kurztitel: doc.citation.kurztitel,
-            langtitel: doc.citation.langtitel,
-            kundmachungsorgan: doc.citation.kundmachungsorgan,
-            paragraph: doc.citation.paragraph,
-            eli: doc.citation.eli,
-            inkrafttreten: doc.citation.inkrafttreten,
-            ausserkrafttreten: doc.citation.ausserkrafttreten,
-          },
-          dokument_url: doc.dokument_url,
-          gesamte_rechtsvorschrift_url: doc.gesamte_rechtsvorschrift_url,
-        };
       } else {
         // Only URL provided - minimal metadata
         metadata = {
@@ -566,8 +590,10 @@ Note: For long documents, content may be truncated. Use specific searches to nar
         };
       }
 
-      // Fetch document content
-      const htmlContent = await getDocumentContent(contentUrl);
+      // Fetch document content if not already fetched via direct URL
+      if (!htmlContent) {
+        htmlContent = await getDocumentContent(contentUrl);
+      }
 
       // Format the document
       const formatted = formatDocument(htmlContent, metadata, response_format);
