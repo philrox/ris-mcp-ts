@@ -241,17 +241,20 @@ url="https://www.ris.bka.gv.at/..."
 
 ### ris_bezirke
 
-Durchsucht Entscheidungen der Bezirksverwaltungsbehoerden.
+Durchsucht Kundmachungen der Bezirksverwaltungsbehoerden.
+
+**Hinweis:** Nur folgende Bundeslaender veroeffentlichen hier: Niederoesterreich, Oberoesterreich, Tirol, Vorarlberg, Burgenland, Steiermark.
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
 | `suchworte` | string | Nein | Volltextsuche |
-| `bundesland` | string | Nein | Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
-| `bezirk` | string | Nein | Bezirksname (z.B. "Innsbruck") |
-| `geschaeftszahl` | string | Nein | Geschaeftszahl |
-| `entscheidungsdatum_von` | string | Nein | Entscheidungsdatum ab (YYYY-MM-DD) |
-| `entscheidungsdatum_bis` | string | Nein | Entscheidungsdatum bis (YYYY-MM-DD) |
-| `norm` | string | Nein | Rechtsnorm (z.B. "Bauordnung") |
+| `titel` | string | Nein | Suche in Titeln |
+| `bundesland` | string | Nein | Niederoesterreich, Oberoesterreich, Tirol, Vorarlberg, Burgenland, Steiermark |
+| `bezirksverwaltungsbehoerde` | string | Nein | Bezirksbehoerde (z.B. "Bezirkshauptmannschaft Innsbruck") |
+| `kundmachungsnummer` | string | Nein | Kundmachungsnummer |
+| `kundmachungsdatum_von` | string | Nein | Kundmachungsdatum ab (YYYY-MM-DD) |
+| `kundmachungsdatum_bis` | string | Nein | Kundmachungsdatum bis (YYYY-MM-DD) |
+| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
 | `seite` | number | Nein | Seitennummer |
 | `limit` | number | Nein | Ergebnisse pro Seite |
 | `response_format` | string | Nein | "markdown" oder "json" |
@@ -259,8 +262,9 @@ Durchsucht Entscheidungen der Bezirksverwaltungsbehoerden.
 **Beispiele:**
 
 ```
-bundesland="Wien", suchworte="Baubewilligung"
-bezirk="Innsbruck", geschaeftszahl="12345/2023"
+bundesland="Niederoesterreich", suchworte="Bauordnung"
+bezirksverwaltungsbehoerde="Bezirkshauptmannschaft Innsbruck"
+bundesland="Tirol", im_ris_seit="EinemMonat"
 ```
 
 ---
