@@ -46,7 +46,7 @@ npm run inspect
 ```
 src/
 ├── index.ts       # Entry point (stdio transport)
-├── server.ts      # MCP Server with 4 tools
+├── server.ts      # MCP Server with 12 tools
 ├── client.ts      # HTTP client for RIS API
 ├── parser.ts      # JSON parsing logic
 ├── types.ts       # Zod schemas + TypeScript types
@@ -54,7 +54,7 @@ src/
 └── __tests__/     # Test files
 ```
 
-## MCP Tools
+## MCP Tools (12)
 
 - **ris_bundesrecht** - Search Austrian federal laws
 - **ris_landesrecht** - Search Austrian state/provincial laws
@@ -65,6 +65,9 @@ src/
 - **ris_dokument** - Retrieve full text of legal documents
 - **ris_bezirke** - Search district administrative authority decisions
 - **ris_gemeinden** - Search municipal law
+- **ris_sonstige** - Search miscellaneous legal collections
+- **ris_history** - Search historical legal documents
+- **ris_verordnungen** - Search ordinances/regulations
 
 ## Documentation
 

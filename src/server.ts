@@ -953,26 +953,37 @@ Note: For long documents, content may be truncated. Use specific searches to nar
 
 server.tool(
   "ris_bezirke",
-  `Search Austrian district administrative authority decisions (Bezirksverwaltungsbehörden).
+  `Search Austrian district administrative authority announcements (Kundmachungen der Bezirksverwaltungsbehörden).
 
-Use this tool to find administrative decisions from district authorities.
+Use this tool to find announcements and ordinances from district administrative authorities.
+
+Note: Only certain states publish here: Niederösterreich, Oberösterreich, Tirol, Vorarlberg, Burgenland, Steiermark.
 
 Example queries:
-  - bundesland="Wien", suchworte="Baubewilligung"
-  - bezirk="Innsbruck", geschaeftszahl="12345/2023"`,
+  - bundesland="Niederösterreich", suchworte="Bauordnung"
+  - bezirksverwaltungsbehoerde="Bezirkshauptmannschaft Innsbruck"`,
   {
     suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in titles"),
     bundesland: z
       .string()
       .optional()
       .describe(
-        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+        "Filter by state - Burgenland, Kärnten, Niederösterreich, Oberösterreich, Salzburg, Steiermark, Tirol, Vorarlberg, Wien"
       ),
-    bezirk: z.string().optional().describe('District name (e.g., "Innsbruck")'),
-    geschaeftszahl: z.string().optional().describe("Case number"),
-    entscheidungsdatum_von: z.string().optional().describe("Decision date from (YYYY-MM-DD)"),
-    entscheidungsdatum_bis: z.string().optional().describe("Decision date to (YYYY-MM-DD)"),
-    norm: z.string().optional().describe('Search by legal norm (e.g., "Bauordnung")'),
+    bezirksverwaltungsbehoerde: z
+      .string()
+      .optional()
+      .describe(
+        'District authority name (e.g., "Bezirkshauptmannschaft Innsbruck", "Bezirkshauptmannschaft Amstetten")'
+      ),
+    kundmachungsnummer: z.string().optional().describe("Announcement number"),
+    kundmachungsdatum_von: z.string().optional().describe("Announcement date from (YYYY-MM-DD)"),
+    kundmachungsdatum_bis: z.string().optional().describe("Announcement date to (YYYY-MM-DD)"),
+    im_ris_seit: z
+      .enum(["EinerWoche", "ZweiWochen", "EinemMonat", "DreiMonaten", "SechsMonaten", "EinemJahr"])
+      .optional()
+      .describe("Filter by time in RIS"),
     seite: z.number().default(1).describe("Page number (default: 1)"),
     limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
     response_format: z
@@ -983,30 +994,31 @@ Example queries:
   async (args) => {
     const {
       suchworte,
+      titel,
       bundesland,
-      bezirk,
-      geschaeftszahl,
-      entscheidungsdatum_von,
-      entscheidungsdatum_bis,
-      norm,
+      bezirksverwaltungsbehoerde,
+      kundmachungsnummer,
+      kundmachungsdatum_von,
+      kundmachungsdatum_bis,
+      im_ris_seit,
       seite,
       limit,
       response_format,
     } = args;
 
     // Validate at least one search parameter
-    if (!suchworte && !bundesland && !bezirk && !geschaeftszahl && !norm) {
+    if (!suchworte && !titel && !bundesland && !bezirksverwaltungsbehoerde && !kundmachungsnummer) {
       return {
         content: [
           {
             type: "text" as const,
             text:
               "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `bundesland` fuer Bundesland\n" +
-              "- `bezirk` fuer Bezirk\n" +
-              "- `geschaeftszahl` fuer Geschaeftszahl\n" +
-              "- `norm` fuer Rechtsnorm",
+              "- `suchworte` für Volltextsuche\n" +
+              "- `titel` für Titelsuche\n" +
+              "- `bundesland` für Bundesland\n" +
+              "- `bezirksverwaltungsbehoerde` für Bezirksverwaltungsbehörde\n" +
+              "- `kundmachungsnummer` für Kundmachungsnummer",
           },
         ],
       };
@@ -1020,15 +1032,13 @@ Example queries:
     };
 
     if (suchworte) params["Suchworte"] = suchworte;
-    if (bezirk) params["Bezirk"] = bezirk;
-    if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
-    if (norm) params["Norm"] = norm;
-    if (entscheidungsdatum_von) params["EntscheidungsdatumVon"] = entscheidungsdatum_von;
-    if (entscheidungsdatum_bis) params["EntscheidungsdatumBis"] = entscheidungsdatum_bis;
-    if (bundesland) {
-      // Bvb API uses direct Bundesland string, not boolean flags
-      params["Bundesland"] = bundesland;
-    }
+    if (titel) params["Titel"] = titel;
+    if (bundesland) params["Bundesland"] = bundesland;
+    if (bezirksverwaltungsbehoerde) params["Bezirksverwaltungsbehoerde"] = bezirksverwaltungsbehoerde;
+    if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
+    if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
+    if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
+    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
 
     try {
       const apiResponse = await searchBezirke(params);
