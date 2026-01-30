@@ -20,6 +20,7 @@ import {
   searchGemeinden,
   searchJudikatur,
   searchLandesrecht,
+  searchSonstige,
 } from "./client.js";
 import {
   formatDocument,
@@ -1044,6 +1045,92 @@ Example queries:
 
     try {
       const apiResponse = await searchGemeinden(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 10: ris_sonstige
+// =============================================================================
+
+server.tool(
+  "ris_sonstige",
+  `Search miscellaneous Austrian legal collections (Sonstige).
+
+Use this tool for specialized legal documents and historical materials.
+
+Available applications:
+  - PruefGewO: Trade licensing examinations (Gewerbeordnung)
+  - Avsv: Official veterinary notices
+  - Spg: Security Police Act guidelines
+  - KmGer: War Ministry documents (historical)
+  - Mrp: Council of Ministers protocols
+  - Erlaesse: Ministerial decrees
+
+Example queries:
+  - applikation="Mrp", suchworte="Budget"
+  - applikation="Erlaesse", titel="Finanzministerium"`,
+  {
+    applikation: z
+      .enum(["PruefGewO", "Avsv", "Spg", "KmGer", "Mrp", "Erlaesse"])
+      .describe(
+        'Collection to search - "PruefGewO" (trade exams), "Avsv" (veterinary), "Spg" (security police), "KmGer" (war ministry), "Mrp" (cabinet protocols), "Erlaesse" (decrees)'
+      ),
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in titles"),
+    datum_von: z.string().optional().describe("Date from (YYYY-MM-DD)"),
+    datum_bis: z.string().optional().describe("Date to (YYYY-MM-DD)"),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const { applikation, suchworte, titel, datum_von, datum_bis, seite, limit, response_format } =
+      args;
+
+    // Validate at least one search parameter beyond applikation
+    if (!suchworte && !titel) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
+              "- `suchworte` fuer Volltextsuche\n" +
+              "- `titel` fuer Suche in Titeln",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (datum_von) params["DatumVon"] = datum_von;
+    if (datum_bis) params["DatumBis"] = datum_bis;
+
+    try {
+      const apiResponse = await searchSonstige(params);
       const searchResult = parseSearchResults(apiResponse);
       const formatted = formatSearchResults(searchResult, response_format);
       const result = truncateResponse(formatted);

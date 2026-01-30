@@ -233,6 +233,16 @@ export async function searchGemeinden(
 }
 
 /**
+ * Search miscellaneous legal collections (Sonstige).
+ */
+export async function searchSonstige(
+  params: Record<string, unknown>,
+  timeout = DEFAULT_TIMEOUT
+): Promise<NormalizedSearchResults> {
+  return request("Sonstige", params, timeout);
+}
+
+/**
  * Fetch HTML content from a document URL.
  */
 export async function getDocumentContent(

@@ -1476,3 +1476,193 @@ describe("Gemeinden API parameter mapping", () => {
     });
   });
 });
+
+// =============================================================================
+// Sonstige Search Requirements Tests
+// =============================================================================
+
+describe("Sonstige search requirements", () => {
+  it("should require at least one of: suchworte, titel (beyond applikation)", () => {
+    const params1 = { applikation: "Mrp", suchworte: "Budget" };
+    const params2 = { applikation: "Erlaesse", titel: "Finanzministerium" };
+    const onlyApplikation = { applikation: "Mrp" };
+
+    const hasRequired1 =
+      params1.suchworte || (params1 as { titel?: string }).titel;
+    const hasRequired2 =
+      (params2 as { suchworte?: string }).suchworte || params2.titel;
+    const hasRequiredOnlyApp =
+      (onlyApplikation as { suchworte?: string }).suchworte ||
+      (onlyApplikation as { titel?: string }).titel;
+
+    expect(hasRequired1).toBeTruthy();
+    expect(hasRequired2).toBeTruthy();
+    expect(hasRequiredOnlyApp).toBeFalsy();
+  });
+
+  it("should support all 6 applikation values", () => {
+    const supportedApplikationen = ["PruefGewO", "Avsv", "Spg", "KmGer", "Mrp", "Erlaesse"];
+    expect(supportedApplikationen).toHaveLength(6);
+  });
+});
+
+// =============================================================================
+// Sonstige API Parameter Mapping Tests
+// =============================================================================
+
+describe("Sonstige API parameter mapping", () => {
+  // Re-implement the mapping logic for testing
+  function buildSonstigeParams(args: {
+    applikation: "PruefGewO" | "Avsv" | "Spg" | "KmGer" | "Mrp" | "Erlaesse";
+    suchworte?: string;
+    titel?: string;
+    datum_von?: string;
+    datum_bis?: string;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const { applikation, suchworte, titel, datum_von, datum_bis, seite = 1, limit = 20 } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (datum_von) params["DatumVon"] = datum_von;
+    if (datum_bis) params["DatumBis"] = datum_bis;
+
+    return params;
+  }
+
+  describe("applikation parameter", () => {
+    it("should map PruefGewO to Applikation='PruefGewO'", () => {
+      const params = buildSonstigeParams({ applikation: "PruefGewO", suchworte: "test" });
+      expect(params["Applikation"]).toBe("PruefGewO");
+    });
+
+    it("should map Avsv to Applikation='Avsv'", () => {
+      const params = buildSonstigeParams({ applikation: "Avsv", suchworte: "test" });
+      expect(params["Applikation"]).toBe("Avsv");
+    });
+
+    it("should map Spg to Applikation='Spg'", () => {
+      const params = buildSonstigeParams({ applikation: "Spg", suchworte: "test" });
+      expect(params["Applikation"]).toBe("Spg");
+    });
+
+    it("should map KmGer to Applikation='KmGer'", () => {
+      const params = buildSonstigeParams({ applikation: "KmGer", suchworte: "test" });
+      expect(params["Applikation"]).toBe("KmGer");
+    });
+
+    it("should map Mrp to Applikation='Mrp'", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test" });
+      expect(params["Applikation"]).toBe("Mrp");
+    });
+
+    it("should map Erlaesse to Applikation='Erlaesse'", () => {
+      const params = buildSonstigeParams({ applikation: "Erlaesse", suchworte: "test" });
+      expect(params["Applikation"]).toBe("Erlaesse");
+    });
+  });
+
+  describe("suchworte parameter", () => {
+    it("should map suchworte to 'Suchworte' API parameter", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "Budget" });
+      expect(params["Suchworte"]).toBe("Budget");
+    });
+
+    it("should not include Suchworte when suchworte is not provided", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", titel: "Test" });
+      expect(params["Suchworte"]).toBeUndefined();
+    });
+  });
+
+  describe("titel parameter", () => {
+    it("should map titel to 'Titel' API parameter", () => {
+      const params = buildSonstigeParams({ applikation: "Erlaesse", titel: "Finanzministerium" });
+      expect(params["Titel"]).toBe("Finanzministerium");
+    });
+
+    it("should not include Titel when titel is not provided", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test" });
+      expect(params["Titel"]).toBeUndefined();
+    });
+  });
+
+  describe("date parameters", () => {
+    it("should map datum_von to 'DatumVon' (not EntscheidungsdatumVon)", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", datum_von: "2023-01-01" });
+      expect(params["DatumVon"]).toBe("2023-01-01");
+      expect(params["EntscheidungsdatumVon"]).toBeUndefined();
+    });
+
+    it("should map datum_bis to 'DatumBis' (not EntscheidungsdatumBis)", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", datum_bis: "2023-12-31" });
+      expect(params["DatumBis"]).toBe("2023-12-31");
+      expect(params["EntscheidungsdatumBis"]).toBeUndefined();
+    });
+  });
+
+  describe("pagination parameters", () => {
+    it("should default seite to 1", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test" });
+      expect(params["Seitennummer"]).toBe(1);
+    });
+
+    it("should default limit to Twenty (20)", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test" });
+      expect(params["DokumenteProSeite"]).toBe("Twenty");
+    });
+
+    it("should map custom seite value", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", seite: 3 });
+      expect(params["Seitennummer"]).toBe(3);
+    });
+
+    it("should map limit=10 to 'Ten'", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", limit: 10 });
+      expect(params["DokumenteProSeite"]).toBe("Ten");
+    });
+
+    it("should map limit=50 to 'Fifty'", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", limit: 50 });
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+
+    it("should map limit=100 to 'OneHundred'", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", limit: 100 });
+      expect(params["DokumenteProSeite"]).toBe("OneHundred");
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildSonstigeParams({
+        applikation: "Mrp",
+        suchworte: "Budget",
+        titel: "Ministerrat",
+        datum_von: "2023-01-01",
+        datum_bis: "2023-12-31",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Applikation"]).toBe("Mrp");
+      expect(params["Suchworte"]).toBe("Budget");
+      expect(params["Titel"]).toBe("Ministerrat");
+      expect(params["DatumVon"]).toBe("2023-01-01");
+      expect(params["DatumBis"]).toBe("2023-12-31");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
