@@ -1361,20 +1361,12 @@ NOTE: Currently only Tirol data is available (since January 1, 2022).
 Other federal states have not yet published their ordinance gazettes in RIS.
 
 Example queries:
-  - suchworte="Parkordnung"
-  - vblnummer="25", jahrgang="2023"
-  - titel="Aufenthaltsabgabe"`,
+  - suchworte="Wolf" -> Full-text search (also searches titles)
+  - kundmachungsdatum_von="2024-01-01", kundmachungsdatum_bis="2024-12-31" -> Date range`,
   {
-    suchworte: z.string().optional().describe("Full-text search terms"),
-    titel: z.string().optional().describe("Search in gazette titles"),
-    bundesland: z
-      .string()
-      .optional()
-      .describe(
-        "Filter by state (currently only Tirol data available) - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
-      ),
-    vblnummer: z.string().optional().describe('Ordinance gazette number (e.g., "25")'),
-    jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
+    suchworte: z.string().optional().describe("Full-text search terms (searches all text including titles)"),
+    kundmachungsdatum_von: z.string().optional().describe("Publication date from (YYYY-MM-DD)"),
+    kundmachungsdatum_bis: z.string().optional().describe("Publication date to (YYYY-MM-DD)"),
     seite: z.number().default(1).describe("Page number (default: 1)"),
     limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
     response_format: z
@@ -1383,10 +1375,11 @@ Example queries:
       .describe('"markdown" (default) or "json"'),
   },
   async (args) => {
-    const { suchworte, titel, bundesland, vblnummer, jahrgang, seite, limit, response_format } = args;
+    const { suchworte, kundmachungsdatum_von, kundmachungsdatum_bis, seite, limit, response_format } =
+      args;
 
     // Validate at least one search parameter
-    if (!suchworte && !titel && !bundesland && !vblnummer && !jahrgang) {
+    if (!suchworte && !kundmachungsdatum_von) {
       return {
         content: [
           {
@@ -1394,10 +1387,7 @@ Example queries:
             text:
               "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
               "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Titeln\n" +
-              "- `bundesland` fuer Bundesland\n" +
-              "- `vblnummer` fuer Verordnungsblatt-Nummer\n" +
-              "- `jahrgang` fuer Jahr",
+              "- `kundmachungsdatum_von` fuer Datum ab",
           },
         ],
       };
@@ -1412,15 +1402,8 @@ Example queries:
     };
 
     if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
-    if (vblnummer) params["Vblnummer"] = vblnummer;
-    if (jahrgang) params["Jahrgang"] = jahrgang;
-    if (bundesland) {
-      const apiKey = BUNDESLAND_MAPPING[bundesland];
-      if (apiKey) {
-        params[`Bundesland.${apiKey}`] = "true";
-      }
-    }
+    if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
+    if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
 
     try {
       const apiResponse = await searchLandesrecht(params);
