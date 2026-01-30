@@ -1353,19 +1353,6 @@ describe("Bezirke API parameter mapping", () => {
 // =============================================================================
 
 describe("Gemeinden API parameter mapping", () => {
-  // Bundesland mapping constant (mirrors server.ts)
-  const BUNDESLAND_MAPPING: Record<string, string> = {
-    Wien: "SucheInWien",
-    Niederoesterreich: "SucheInNiederoesterreich",
-    Oberoesterreich: "SucheInOberoesterreich",
-    Salzburg: "SucheInSalzburg",
-    Tirol: "SucheInTirol",
-    Vorarlberg: "SucheInVorarlberg",
-    Kaernten: "SucheInKaernten",
-    Steiermark: "SucheInSteiermark",
-    Burgenland: "SucheInBurgenland",
-  };
-
   // Re-implement the mapping logic for testing
   function buildGemeindenParams(args: {
     suchworte?: string;
@@ -1392,12 +1379,7 @@ describe("Gemeinden API parameter mapping", () => {
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
     if (gemeinde) params["Gemeinde"] = gemeinde;
-    if (bundesland) {
-      const apiKey = BUNDESLAND_MAPPING[bundesland];
-      if (apiKey) {
-        params[`Bundesland.${apiKey}`] = "true";
-      }
-    }
+    if (bundesland) params["Bundesland"] = bundesland;
 
     return params;
   }
@@ -1439,17 +1421,17 @@ describe("Gemeinden API parameter mapping", () => {
   });
 
   describe("bundesland parameter", () => {
-    it("should map Steiermark to Bundesland.SucheInSteiermark=true", () => {
+    it("should pass Bundesland directly to API", () => {
       const params = buildGemeindenParams({ bundesland: "Steiermark" });
 
-      expect(params["Bundesland.SucheInSteiermark"]).toBe("true");
+      expect(params["Bundesland"]).toBe("Steiermark");
     });
 
-    it("should map all 9 Bundeslaender correctly", () => {
-      const bundeslaender = Object.keys(BUNDESLAND_MAPPING);
+    it("should pass any Bundesland value directly", () => {
+      const bundeslaender = ["Wien", "Steiermark", "Kärnten", "Tirol"];
       for (const bl of bundeslaender) {
         const params = buildGemeindenParams({ bundesland: bl });
-        expect(params[`Bundesland.${BUNDESLAND_MAPPING[bl]}`]).toBe("true");
+        expect(params["Bundesland"]).toBe(bl);
       }
     });
   });
@@ -1469,7 +1451,7 @@ describe("Gemeinden API parameter mapping", () => {
       expect(params["Applikation"]).toBe("Gr");
       expect(params["Suchworte"]).toBe("Parkgebuehren");
       expect(params["Titel"]).toBe("Gebuehrenordnung");
-      expect(params["Bundesland.SucheInSteiermark"]).toBe("true");
+      expect(params["Bundesland"]).toBe("Steiermark");
       expect(params["Gemeinde"]).toBe("Graz");
       expect(params["Seitennummer"]).toBe(2);
       expect(params["DokumenteProSeite"]).toBe("Fifty");

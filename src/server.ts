@@ -1077,7 +1077,7 @@ Example queries:
       .string()
       .optional()
       .describe(
-        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+        "Filter by state - Burgenland, Kärnten, Niederösterreich, Oberösterreich, Salzburg, Steiermark, Tirol, Vorarlberg, Wien"
       ),
     gemeinde: z.string().optional().describe('Municipality name (e.g., "Graz")'),
     applikation: z
@@ -1122,12 +1122,7 @@ Example queries:
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
     if (gemeinde) params["Gemeinde"] = gemeinde;
-    if (bundesland) {
-      const apiKey = BUNDESLAND_MAPPING[bundesland];
-      if (apiKey) {
-        params[`Bundesland.${apiKey}`] = "true";
-      }
-    }
+    if (bundesland) params["Bundesland"] = bundesland;
 
     try {
       const apiResponse = await searchGemeinden(params);
