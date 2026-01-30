@@ -33,6 +33,11 @@ export const JudikaturGerichtSchema = z.enum([
   "Bvwg", // Federal Administrative Court
   "Lvwg", // State Administrative Courts
   "Dsk", // Data Protection Authority
+  "AsylGH", // Asylum Court (historical, until 2013)
+  "Normenliste", // Court norm lists (judicial review)
+  "Pvak", // Personnel Representation Supervision Commission
+  "Gbk", // Equal Treatment Commission
+  "Dok", // Disciplinary Commission
 ]);
 export type JudikaturGericht = z.infer<typeof JudikaturGerichtSchema>;
 

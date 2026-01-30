@@ -293,7 +293,7 @@ Example: gericht="Vfgh", suchworte="Grundrecht"`,
       .string()
       .default("Justiz")
       .describe(
-        'Court - "Justiz" (OGH/OLG/LG, default), "Vfgh" (Constitutional), "Vwgh" (Administrative), "Bvwg", "Dsk" (Data Protection)'
+        'Court - "Justiz" (OGH/OLG/LG, default), "Vfgh" (Constitutional), "Vwgh" (Administrative), "Bvwg", "Lvwg", "Dsk" (Data Protection), "AsylGH" (historical), "Normenliste", "Pvak", "Gbk", "Dok"'
       ),
     norm: z
       .string()
@@ -372,7 +372,263 @@ Example: gericht="Vfgh", suchworte="Grundrecht"`,
 );
 
 // =============================================================================
-// Tool 4: ris_dokument
+// Tool 4: ris_bundesgesetzblatt
+// =============================================================================
+
+server.tool(
+  "ris_bundesgesetzblatt",
+  `Search Austrian Federal Law Gazettes (Bundesgesetzblatt).
+
+Use this tool for historical research and tracking when laws were enacted.
+Contains official publications of federal laws, ordinances, and treaties.
+
+Example queries:
+  - bgblnummer="120", jahrgang="2023", teil="1" -> Find specific gazette
+  - suchworte="Klimaschutz" -> Full-text search in gazettes`,
+  {
+    bgblnummer: z.string().optional().describe('Gazette number (e.g., "120")'),
+    teil: z
+      .enum(["1", "2", "3"])
+      .optional()
+      .describe('Part - "1" (I=Laws), "2" (II=Ordinances), "3" (III=Treaties)'),
+    jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in gazette titles"),
+    applikation: z
+      .enum(["BgblAuth", "BgblPdf", "BgblAlt"])
+      .default("BgblAuth")
+      .describe('"BgblAuth" (authentic 2004+, default), "BgblPdf" (PDF), "BgblAlt" (1945-2003)'),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const { bgblnummer, teil, jahrgang, suchworte, titel, applikation, seite, limit, response_format } =
+      args;
+
+    // Validate at least one search parameter
+    if (!bgblnummer && !jahrgang && !suchworte && !titel) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
+              "- `bgblnummer` fuer Gesetzblatt-Nummer\n" +
+              "- `jahrgang` fuer Jahr\n" +
+              "- `suchworte` fuer Volltextsuche\n" +
+              "- `titel` fuer Suche in Titeln",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (bgblnummer) params["Bgblnummer"] = bgblnummer;
+    if (teil) params["Teil"] = teil;
+    if (jahrgang) params["Jahrgang"] = jahrgang;
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+
+    try {
+      const apiResponse = await searchBundesrecht(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 5: ris_landesgesetzblatt
+// =============================================================================
+
+server.tool(
+  "ris_landesgesetzblatt",
+  `Search Austrian State Law Gazettes (Landesgesetzblatt).
+
+Use this tool to find official publications of state/provincial laws.
+Covers all 9 federal states (Bundeslaender).
+
+Example queries:
+  - lgblnummer="50", jahrgang="2023", bundesland="Wien"
+  - suchworte="Bauordnung", bundesland="Salzburg"`,
+  {
+    lgblnummer: z.string().optional().describe('Gazette number (e.g., "50")'),
+    jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
+    bundesland: z
+      .string()
+      .optional()
+      .describe(
+        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+      ),
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in gazette titles"),
+    applikation: z
+      .enum(["LgblAuth", "Lgbl", "LgblNO"])
+      .default("LgblAuth")
+      .describe('"LgblAuth" (authentic, default), "Lgbl" (general), "LgblNO" (Lower Austria)'),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const { lgblnummer, jahrgang, bundesland, suchworte, titel, applikation, seite, limit, response_format } =
+      args;
+
+    // Validate at least one search parameter
+    if (!lgblnummer && !jahrgang && !bundesland && !suchworte && !titel) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
+              "- `lgblnummer` fuer Gesetzblatt-Nummer\n" +
+              "- `jahrgang` fuer Jahr\n" +
+              "- `bundesland` fuer Bundesland\n" +
+              "- `suchworte` fuer Volltextsuche\n" +
+              "- `titel` fuer Suche in Titeln",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (lgblnummer) params["Lgblnummer"] = lgblnummer;
+    if (jahrgang) params["Jahrgang"] = jahrgang;
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    try {
+      const apiResponse = await searchLandesrecht(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 6: ris_regierungsvorlagen
+// =============================================================================
+
+server.tool(
+  "ris_regierungsvorlagen",
+  `Search Austrian Government Bills (Regierungsvorlagen).
+
+Use this tool for legislative history and parliamentary materials.
+Contains government proposals submitted to parliament.
+
+Example queries:
+  - nummer="123", gesetzgebungsperiode="27" -> Find specific bill
+  - suchworte="Klimaschutz" -> Full-text search in bills`,
+  {
+    nummer: z.string().optional().describe('Bill number (e.g., "123")'),
+    gesetzgebungsperiode: z
+      .string()
+      .optional()
+      .describe('Legislative period (e.g., "27" for XXVII. GP)'),
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in bill titles"),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const { nummer, gesetzgebungsperiode, suchworte, titel, seite, limit, response_format } = args;
+
+    // Validate at least one search parameter
+    if (!nummer && !gesetzgebungsperiode && !suchworte && !titel) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
+              "- `nummer` fuer Vorlagen-Nummer\n" +
+              "- `gesetzgebungsperiode` fuer GP (z.B. 27)\n" +
+              "- `suchworte` fuer Volltextsuche\n" +
+              "- `titel` fuer Suche in Titeln",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    const params: Record<string, unknown> = {
+      Applikation: "RegV",
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (nummer) params["Nummer"] = nummer;
+    if (gesetzgebungsperiode) params["Gesetzgebungsperiode"] = gesetzgebungsperiode;
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+
+    try {
+      const apiResponse = await searchBundesrecht(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 7: ris_dokument
 // =============================================================================
 
 server.tool(

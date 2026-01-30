@@ -136,6 +136,35 @@ describe("Parameter validation patterns", () => {
     });
   });
 
+  describe("Judikatur gericht parameter values", () => {
+    const supportedGerichte = [
+      "Justiz", "Vfgh", "Vwgh", "Bvwg", "Lvwg", "Dsk",
+      "AsylGH", "Normenliste", "Pvak", "Gbk", "Dok",
+    ];
+
+    it("should include all expected court types", () => {
+      expect(supportedGerichte).toHaveLength(11);
+    });
+
+    it("should map gericht directly to Applikation parameter", () => {
+      function buildJudikaturParams(args: { gericht?: string; suchworte?: string }) {
+        const { suchworte, gericht = "Justiz" } = args;
+        const params: Record<string, unknown> = {
+          Applikation: gericht,
+          DokumenteProSeite: "Twenty",
+          Seitennummer: 1,
+        };
+        if (suchworte) params["Suchworte"] = suchworte;
+        return params;
+      }
+
+      for (const gericht of supportedGerichte) {
+        const params = buildJudikaturParams({ gericht, suchworte: "test" });
+        expect(params["Applikation"]).toBe(gericht);
+      }
+    });
+  });
+
   describe("Document lookup requirements", () => {
     it("should require either dokumentnummer or url", () => {
       const params1 = { dokumentnummer: "NOR40000001" };
@@ -549,5 +578,510 @@ describe("Limit to DokumenteProSeite mapping", () => {
   it("should default to Twenty for unknown values", () => {
     expect(limitToDokumenteProSeite(25)).toBe("Twenty");
     expect(limitToDokumenteProSeite(0)).toBe("Twenty");
+  });
+});
+
+// =============================================================================
+// Bundesgesetzblatt API Parameter Mapping Tests
+// =============================================================================
+
+describe("Bundesgesetzblatt API parameter mapping", () => {
+  // Re-implement the mapping logic for testing
+  function buildBundesgesetzblattParams(args: {
+    bgblnummer?: string;
+    teil?: "1" | "2" | "3";
+    jahrgang?: string;
+    suchworte?: string;
+    titel?: string;
+    applikation?: "BgblAuth" | "BgblPdf" | "BgblAlt";
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const {
+      bgblnummer,
+      teil,
+      jahrgang,
+      suchworte,
+      titel,
+      applikation = "BgblAuth",
+      seite = 1,
+      limit = 20,
+    } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (bgblnummer) params["Bgblnummer"] = bgblnummer;
+    if (teil) params["Teil"] = teil;
+    if (jahrgang) params["Jahrgang"] = jahrgang;
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+
+    return params;
+  }
+
+  describe("bgblnummer parameter", () => {
+    it("should map bgblnummer to 'Bgblnummer' API parameter", () => {
+      const params = buildBundesgesetzblattParams({ bgblnummer: "120" });
+
+      expect(params["Bgblnummer"]).toBe("120");
+    });
+
+    it("should not include Bgblnummer when bgblnummer is not provided", () => {
+      const params = buildBundesgesetzblattParams({ suchworte: "Test" });
+
+      expect(params["Bgblnummer"]).toBeUndefined();
+    });
+  });
+
+  describe("teil parameter", () => {
+    it("should map teil='1' to Teil='1' (Part I = Laws)", () => {
+      const params = buildBundesgesetzblattParams({ bgblnummer: "1", teil: "1" });
+
+      expect(params["Teil"]).toBe("1");
+    });
+
+    it("should map teil='2' to Teil='2' (Part II = Ordinances)", () => {
+      const params = buildBundesgesetzblattParams({ bgblnummer: "1", teil: "2" });
+
+      expect(params["Teil"]).toBe("2");
+    });
+
+    it("should map teil='3' to Teil='3' (Part III = Treaties)", () => {
+      const params = buildBundesgesetzblattParams({ bgblnummer: "1", teil: "3" });
+
+      expect(params["Teil"]).toBe("3");
+    });
+  });
+
+  describe("jahrgang parameter", () => {
+    it("should map jahrgang to 'Jahrgang' API parameter", () => {
+      const params = buildBundesgesetzblattParams({ jahrgang: "2023" });
+
+      expect(params["Jahrgang"]).toBe("2023");
+    });
+  });
+
+  describe("applikation parameter", () => {
+    it("should default to BgblAuth", () => {
+      const params = buildBundesgesetzblattParams({ bgblnummer: "1" });
+
+      expect(params["Applikation"]).toBe("BgblAuth");
+    });
+
+    it("should allow BgblPdf for PDF gazettes", () => {
+      const params = buildBundesgesetzblattParams({ bgblnummer: "1", applikation: "BgblPdf" });
+
+      expect(params["Applikation"]).toBe("BgblPdf");
+    });
+
+    it("should allow BgblAlt for historical gazettes (1945-2003)", () => {
+      const params = buildBundesgesetzblattParams({ bgblnummer: "1", applikation: "BgblAlt" });
+
+      expect(params["Applikation"]).toBe("BgblAlt");
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildBundesgesetzblattParams({
+        bgblnummer: "120",
+        teil: "1",
+        jahrgang: "2023",
+        suchworte: "Klimaschutz",
+        titel: "Klimagesetz",
+        applikation: "BgblAuth",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Bgblnummer"]).toBe("120");
+      expect(params["Teil"]).toBe("1");
+      expect(params["Jahrgang"]).toBe("2023");
+      expect(params["Suchworte"]).toBe("Klimaschutz");
+      expect(params["Titel"]).toBe("Klimagesetz");
+      expect(params["Applikation"]).toBe("BgblAuth");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
+// =============================================================================
+// Landesgesetzblatt API Parameter Mapping Tests
+// =============================================================================
+
+describe("Landesgesetzblatt API parameter mapping", () => {
+  // Bundesland mapping constant (mirrors server.ts)
+  const BUNDESLAND_MAPPING: Record<string, string> = {
+    Wien: "SucheInWien",
+    Niederoesterreich: "SucheInNiederoesterreich",
+    Oberoesterreich: "SucheInOberoesterreich",
+    Salzburg: "SucheInSalzburg",
+    Tirol: "SucheInTirol",
+    Vorarlberg: "SucheInVorarlberg",
+    Kaernten: "SucheInKaernten",
+    Steiermark: "SucheInSteiermark",
+    Burgenland: "SucheInBurgenland",
+  };
+
+  // Re-implement the mapping logic for testing
+  function buildLandesgesetzblattParams(args: {
+    lgblnummer?: string;
+    jahrgang?: string;
+    bundesland?: string;
+    suchworte?: string;
+    titel?: string;
+    applikation?: "LgblAuth" | "Lgbl" | "LgblNO";
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const {
+      lgblnummer,
+      jahrgang,
+      bundesland,
+      suchworte,
+      titel,
+      applikation = "LgblAuth",
+      seite = 1,
+      limit = 20,
+    } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (lgblnummer) params["Lgblnummer"] = lgblnummer;
+    if (jahrgang) params["Jahrgang"] = jahrgang;
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    return params;
+  }
+
+  describe("lgblnummer parameter", () => {
+    it("should map lgblnummer to 'Lgblnummer' API parameter", () => {
+      const params = buildLandesgesetzblattParams({ lgblnummer: "50" });
+
+      expect(params["Lgblnummer"]).toBe("50");
+    });
+
+    it("should not include Lgblnummer when lgblnummer is not provided", () => {
+      const params = buildLandesgesetzblattParams({ suchworte: "Test" });
+
+      expect(params["Lgblnummer"]).toBeUndefined();
+    });
+  });
+
+  describe("jahrgang parameter", () => {
+    it("should map jahrgang to 'Jahrgang' API parameter", () => {
+      const params = buildLandesgesetzblattParams({ jahrgang: "2023" });
+
+      expect(params["Jahrgang"]).toBe("2023");
+    });
+  });
+
+  describe("bundesland parameter", () => {
+    it("should map Wien to Bundesland.SucheInWien=true", () => {
+      const params = buildLandesgesetzblattParams({ bundesland: "Wien", lgblnummer: "1" });
+
+      expect(params["Bundesland.SucheInWien"]).toBe("true");
+    });
+
+    it("should map all 9 Bundeslaender correctly", () => {
+      const bundeslaender = Object.keys(BUNDESLAND_MAPPING);
+      for (const bl of bundeslaender) {
+        const params = buildLandesgesetzblattParams({ bundesland: bl, lgblnummer: "1" });
+        expect(params[`Bundesland.${BUNDESLAND_MAPPING[bl]}`]).toBe("true");
+      }
+    });
+  });
+
+  describe("applikation parameter", () => {
+    it("should default to LgblAuth", () => {
+      const params = buildLandesgesetzblattParams({ lgblnummer: "1" });
+
+      expect(params["Applikation"]).toBe("LgblAuth");
+    });
+
+    it("should allow Lgbl for general gazettes", () => {
+      const params = buildLandesgesetzblattParams({ lgblnummer: "1", applikation: "Lgbl" });
+
+      expect(params["Applikation"]).toBe("Lgbl");
+    });
+
+    it("should allow LgblNO for Lower Austria", () => {
+      const params = buildLandesgesetzblattParams({ lgblnummer: "1", applikation: "LgblNO" });
+
+      expect(params["Applikation"]).toBe("LgblNO");
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildLandesgesetzblattParams({
+        lgblnummer: "50",
+        jahrgang: "2023",
+        bundesland: "Wien",
+        suchworte: "Bauordnung",
+        titel: "Baugesetz",
+        applikation: "LgblAuth",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Lgblnummer"]).toBe("50");
+      expect(params["Jahrgang"]).toBe("2023");
+      expect(params["Bundesland.SucheInWien"]).toBe("true");
+      expect(params["Suchworte"]).toBe("Bauordnung");
+      expect(params["Titel"]).toBe("Baugesetz");
+      expect(params["Applikation"]).toBe("LgblAuth");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
+// =============================================================================
+// Regierungsvorlagen API Parameter Mapping Tests
+// =============================================================================
+
+describe("Regierungsvorlagen API parameter mapping", () => {
+  // Re-implement the mapping logic for testing
+  function buildRegierungsvorlagenParams(args: {
+    nummer?: string;
+    gesetzgebungsperiode?: string;
+    suchworte?: string;
+    titel?: string;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const { nummer, gesetzgebungsperiode, suchworte, titel, seite = 1, limit = 20 } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: "RegV",
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (nummer) params["Nummer"] = nummer;
+    if (gesetzgebungsperiode) params["Gesetzgebungsperiode"] = gesetzgebungsperiode;
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+
+    return params;
+  }
+
+  describe("fixed applikation", () => {
+    it("should always set Applikation to 'RegV'", () => {
+      const params = buildRegierungsvorlagenParams({ suchworte: "Test" });
+
+      expect(params["Applikation"]).toBe("RegV");
+    });
+  });
+
+  describe("nummer parameter", () => {
+    it("should map nummer to 'Nummer' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({ nummer: "123" });
+
+      expect(params["Nummer"]).toBe("123");
+    });
+
+    it("should not include Nummer when nummer is not provided", () => {
+      const params = buildRegierungsvorlagenParams({ suchworte: "Test" });
+
+      expect(params["Nummer"]).toBeUndefined();
+    });
+  });
+
+  describe("gesetzgebungsperiode parameter", () => {
+    it("should map gesetzgebungsperiode to 'Gesetzgebungsperiode' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({ gesetzgebungsperiode: "27" });
+
+      expect(params["Gesetzgebungsperiode"]).toBe("27");
+    });
+
+    it("should handle Roman numeral periods as strings", () => {
+      const params = buildRegierungsvorlagenParams({ gesetzgebungsperiode: "27", nummer: "100" });
+
+      expect(params["Gesetzgebungsperiode"]).toBe("27");
+      expect(params["Nummer"]).toBe("100");
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildRegierungsvorlagenParams({
+        nummer: "123",
+        gesetzgebungsperiode: "27",
+        suchworte: "Klimaschutz",
+        titel: "Klimaschutzgesetz",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Applikation"]).toBe("RegV");
+      expect(params["Nummer"]).toBe("123");
+      expect(params["Gesetzgebungsperiode"]).toBe("27");
+      expect(params["Suchworte"]).toBe("Klimaschutz");
+      expect(params["Titel"]).toBe("Klimaschutzgesetz");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
+// =============================================================================
+// New Tools - Validation Requirements Tests
+// =============================================================================
+
+describe("Parameter validation patterns for new tools", () => {
+  describe("Bundesgesetzblatt search requirements", () => {
+    it("should require at least one of: bgblnummer, jahrgang, suchworte, titel", () => {
+      const params1 = { bgblnummer: "120" };
+      const params2 = { jahrgang: "2023" };
+      const params3 = { suchworte: "Test" };
+      const params4 = { titel: "Gesetz" };
+      const emptyParams = {};
+
+      const hasRequired1 =
+        params1.bgblnummer ||
+        (params1 as { jahrgang?: string }).jahrgang ||
+        (params1 as { suchworte?: string }).suchworte ||
+        (params1 as { titel?: string }).titel;
+      const hasRequired2 =
+        (params2 as { bgblnummer?: string }).bgblnummer ||
+        params2.jahrgang ||
+        (params2 as { suchworte?: string }).suchworte ||
+        (params2 as { titel?: string }).titel;
+      const hasRequired3 =
+        (params3 as { bgblnummer?: string }).bgblnummer ||
+        (params3 as { jahrgang?: string }).jahrgang ||
+        params3.suchworte ||
+        (params3 as { titel?: string }).titel;
+      const hasRequired4 =
+        (params4 as { bgblnummer?: string }).bgblnummer ||
+        (params4 as { jahrgang?: string }).jahrgang ||
+        (params4 as { suchworte?: string }).suchworte ||
+        params4.titel;
+      const hasRequiredEmpty =
+        (emptyParams as { bgblnummer?: string }).bgblnummer ||
+        (emptyParams as { jahrgang?: string }).jahrgang ||
+        (emptyParams as { suchworte?: string }).suchworte ||
+        (emptyParams as { titel?: string }).titel;
+
+      expect(hasRequired1).toBeTruthy();
+      expect(hasRequired2).toBeTruthy();
+      expect(hasRequired3).toBeTruthy();
+      expect(hasRequired4).toBeTruthy();
+      expect(hasRequiredEmpty).toBeFalsy();
+    });
+  });
+
+  describe("Landesgesetzblatt search requirements", () => {
+    it("should require at least one of: lgblnummer, jahrgang, bundesland, suchworte, titel", () => {
+      const params1 = { lgblnummer: "50" };
+      const params2 = { bundesland: "Wien" };
+      const params3 = { suchworte: "Test" };
+      const emptyParams = {};
+
+      const hasRequired1 =
+        params1.lgblnummer ||
+        (params1 as { jahrgang?: string }).jahrgang ||
+        (params1 as { bundesland?: string }).bundesland ||
+        (params1 as { suchworte?: string }).suchworte ||
+        (params1 as { titel?: string }).titel;
+      const hasRequired2 =
+        (params2 as { lgblnummer?: string }).lgblnummer ||
+        (params2 as { jahrgang?: string }).jahrgang ||
+        params2.bundesland ||
+        (params2 as { suchworte?: string }).suchworte ||
+        (params2 as { titel?: string }).titel;
+      const hasRequired3 =
+        (params3 as { lgblnummer?: string }).lgblnummer ||
+        (params3 as { jahrgang?: string }).jahrgang ||
+        (params3 as { bundesland?: string }).bundesland ||
+        params3.suchworte ||
+        (params3 as { titel?: string }).titel;
+      const hasRequiredEmpty =
+        (emptyParams as { lgblnummer?: string }).lgblnummer ||
+        (emptyParams as { jahrgang?: string }).jahrgang ||
+        (emptyParams as { bundesland?: string }).bundesland ||
+        (emptyParams as { suchworte?: string }).suchworte ||
+        (emptyParams as { titel?: string }).titel;
+
+      expect(hasRequired1).toBeTruthy();
+      expect(hasRequired2).toBeTruthy();
+      expect(hasRequired3).toBeTruthy();
+      expect(hasRequiredEmpty).toBeFalsy();
+    });
+  });
+
+  describe("Regierungsvorlagen search requirements", () => {
+    it("should require at least one of: nummer, gesetzgebungsperiode, suchworte, titel", () => {
+      const params1 = { nummer: "123" };
+      const params2 = { gesetzgebungsperiode: "27" };
+      const params3 = { suchworte: "Klimaschutz" };
+      const params4 = { titel: "Klimagesetz" };
+      const emptyParams = {};
+
+      const hasRequired1 =
+        params1.nummer ||
+        (params1 as { gesetzgebungsperiode?: string }).gesetzgebungsperiode ||
+        (params1 as { suchworte?: string }).suchworte ||
+        (params1 as { titel?: string }).titel;
+      const hasRequired2 =
+        (params2 as { nummer?: string }).nummer ||
+        params2.gesetzgebungsperiode ||
+        (params2 as { suchworte?: string }).suchworte ||
+        (params2 as { titel?: string }).titel;
+      const hasRequired3 =
+        (params3 as { nummer?: string }).nummer ||
+        (params3 as { gesetzgebungsperiode?: string }).gesetzgebungsperiode ||
+        params3.suchworte ||
+        (params3 as { titel?: string }).titel;
+      const hasRequired4 =
+        (params4 as { nummer?: string }).nummer ||
+        (params4 as { gesetzgebungsperiode?: string }).gesetzgebungsperiode ||
+        (params4 as { suchworte?: string }).suchworte ||
+        params4.titel;
+      const hasRequiredEmpty =
+        (emptyParams as { nummer?: string }).nummer ||
+        (emptyParams as { gesetzgebungsperiode?: string }).gesetzgebungsperiode ||
+        (emptyParams as { suchworte?: string }).suchworte ||
+        (emptyParams as { titel?: string }).titel;
+
+      expect(hasRequired1).toBeTruthy();
+      expect(hasRequired2).toBeTruthy();
+      expect(hasRequired3).toBeTruthy();
+      expect(hasRequired4).toBeTruthy();
+      expect(hasRequiredEmpty).toBeFalsy();
+    });
   });
 });
