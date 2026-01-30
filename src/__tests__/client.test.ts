@@ -15,6 +15,7 @@ import {
   searchJudikatur,
   searchBezirke,
   searchGemeinden,
+  searchHistory,
   getDocumentContent,
   constructDocumentUrl,
   getDocumentByNumber,
@@ -553,6 +554,67 @@ describe("searchGemeinden", () => {
     const result = await searchGemeinden({ Gemeinde: "Graz" });
 
     expect(result.hits).toBe(7);
+    expect(result.page_number).toBe(1);
+    expect(result.page_size).toBe(20);
+    expect(result.documents).toHaveLength(1);
+  });
+});
+
+describe("searchHistory", () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("should call History endpoint", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            OgdSearchResult: { OgdDocumentResults: { Hits: 0 } },
+          })
+        ),
+    });
+
+    await searchHistory({ Anwendung: "BrKons" });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("History"),
+      expect.any(Object)
+    );
+  });
+
+  it("should return normalized results", async () => {
+    const mockDoc = { Data: { Metadaten: { Technisch: { ID: "NOR40000001" } } } };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            OgdSearchResult: {
+              OgdDocumentResults: {
+                Hits: {
+                  "#text": "25",
+                  "@pageNumber": "1",
+                  "@pageSize": "20",
+                },
+                OgdDocumentReference: [mockDoc],
+              },
+            },
+          })
+        ),
+    });
+
+    const result = await searchHistory({ Anwendung: "BrKons", AenderungenVon: "2024-01-01" });
+
+    expect(result.hits).toBe(25);
     expect(result.page_number).toBe(1);
     expect(result.page_size).toBe(20);
     expect(result.documents).toHaveLength(1);

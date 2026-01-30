@@ -1510,6 +1510,307 @@ describe("Sonstige search requirements", () => {
 // Sonstige API Parameter Mapping Tests
 // =============================================================================
 
+describe("History search requirements", () => {
+  it("should require applikation always", () => {
+    // applikation is a required parameter in the tool schema
+    const params1 = { applikation: "BrKons", aenderungen_von: "2024-01-01" };
+    expect(params1.applikation).toBeTruthy();
+  });
+
+  it("should require at least one date parameter", () => {
+    const params1 = { applikation: "BrKons", aenderungen_von: "2024-01-01" };
+    const params2 = { applikation: "BrKons", aenderungen_bis: "2024-01-31" };
+    const params3 = { applikation: "BrKons", aenderungen_von: "2024-01-01", aenderungen_bis: "2024-01-31" };
+    const onlyApplikation = { applikation: "BrKons" };
+
+    const hasRequired1 = params1.aenderungen_von || (params1 as { aenderungen_bis?: string }).aenderungen_bis;
+    const hasRequired2 = (params2 as { aenderungen_von?: string }).aenderungen_von || params2.aenderungen_bis;
+    const hasRequired3 = params3.aenderungen_von || params3.aenderungen_bis;
+    const hasRequiredOnlyApp =
+      (onlyApplikation as { aenderungen_von?: string }).aenderungen_von ||
+      (onlyApplikation as { aenderungen_bis?: string }).aenderungen_bis;
+
+    expect(hasRequired1).toBeTruthy();
+    expect(hasRequired2).toBeTruthy();
+    expect(hasRequired3).toBeTruthy();
+    expect(hasRequiredOnlyApp).toBeFalsy();
+  });
+});
+
+describe("Verordnungen search requirements", () => {
+  it("should require at least one of: suchworte, titel, bundesland, vblnummer, jahrgang", () => {
+    const params1 = { suchworte: "test" };
+    const params2 = { titel: "Verordnung" };
+    const params3 = { bundesland: "Tirol" };
+    const params4 = { vblnummer: "25" };
+    const params5 = { jahrgang: "2023" };
+    const emptyParams = {};
+
+    const hasRequired1 =
+      params1.suchworte ||
+      (params1 as { titel?: string }).titel ||
+      (params1 as { bundesland?: string }).bundesland ||
+      (params1 as { vblnummer?: string }).vblnummer ||
+      (params1 as { jahrgang?: string }).jahrgang;
+    const hasRequired2 =
+      (params2 as { suchworte?: string }).suchworte ||
+      params2.titel ||
+      (params2 as { bundesland?: string }).bundesland ||
+      (params2 as { vblnummer?: string }).vblnummer ||
+      (params2 as { jahrgang?: string }).jahrgang;
+    const hasRequired3 =
+      (params3 as { suchworte?: string }).suchworte ||
+      (params3 as { titel?: string }).titel ||
+      params3.bundesland ||
+      (params3 as { vblnummer?: string }).vblnummer ||
+      (params3 as { jahrgang?: string }).jahrgang;
+    const hasRequired4 =
+      (params4 as { suchworte?: string }).suchworte ||
+      (params4 as { titel?: string }).titel ||
+      (params4 as { bundesland?: string }).bundesland ||
+      params4.vblnummer ||
+      (params4 as { jahrgang?: string }).jahrgang;
+    const hasRequired5 =
+      (params5 as { suchworte?: string }).suchworte ||
+      (params5 as { titel?: string }).titel ||
+      (params5 as { bundesland?: string }).bundesland ||
+      (params5 as { vblnummer?: string }).vblnummer ||
+      params5.jahrgang;
+    const hasRequiredEmpty =
+      (emptyParams as { suchworte?: string }).suchworte ||
+      (emptyParams as { titel?: string }).titel ||
+      (emptyParams as { bundesland?: string }).bundesland ||
+      (emptyParams as { vblnummer?: string }).vblnummer ||
+      (emptyParams as { jahrgang?: string }).jahrgang;
+
+    expect(hasRequired1).toBeTruthy();
+    expect(hasRequired2).toBeTruthy();
+    expect(hasRequired3).toBeTruthy();
+    expect(hasRequired4).toBeTruthy();
+    expect(hasRequired5).toBeTruthy();
+    expect(hasRequiredEmpty).toBeFalsy();
+  });
+});
+
+describe("History API parameter mapping", () => {
+  // Re-implement the mapping logic for testing
+  function buildHistoryParams(args: {
+    applikation: string;
+    aenderungen_von?: string;
+    aenderungen_bis?: string;
+    include_deleted?: boolean;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const { applikation, aenderungen_von, aenderungen_bis, include_deleted, seite = 1, limit = 20 } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    // Note: History endpoint uses "Anwendung" not "Applikation"
+    const params: Record<string, unknown> = {
+      Anwendung: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (aenderungen_von) params["AenderungenVon"] = aenderungen_von;
+    if (aenderungen_bis) params["AenderungenBis"] = aenderungen_bis;
+    if (include_deleted) params["IncludeDeletedDocuments"] = "true";
+
+    return params;
+  }
+
+  describe("applikation parameter", () => {
+    it("should map applikation to 'Anwendung' (NOT 'Applikation')", () => {
+      const params = buildHistoryParams({ applikation: "BrKons", aenderungen_von: "2024-01-01" });
+
+      expect(params["Anwendung"]).toBe("BrKons");
+      expect(params["Applikation"]).toBeUndefined();
+    });
+  });
+
+  describe("date parameters", () => {
+    it("should map aenderungen_von to 'AenderungenVon'", () => {
+      const params = buildHistoryParams({ applikation: "BrKons", aenderungen_von: "2024-01-01" });
+
+      expect(params["AenderungenVon"]).toBe("2024-01-01");
+    });
+
+    it("should map aenderungen_bis to 'AenderungenBis'", () => {
+      const params = buildHistoryParams({ applikation: "BrKons", aenderungen_bis: "2024-01-31" });
+
+      expect(params["AenderungenBis"]).toBe("2024-01-31");
+    });
+  });
+
+  describe("include_deleted parameter", () => {
+    it("should map include_deleted=true to 'IncludeDeletedDocuments=true'", () => {
+      const params = buildHistoryParams({
+        applikation: "BrKons",
+        aenderungen_von: "2024-01-01",
+        include_deleted: true,
+      });
+
+      expect(params["IncludeDeletedDocuments"]).toBe("true");
+    });
+
+    it("should not include IncludeDeletedDocuments when include_deleted is false", () => {
+      const params = buildHistoryParams({
+        applikation: "BrKons",
+        aenderungen_von: "2024-01-01",
+        include_deleted: false,
+      });
+
+      expect(params["IncludeDeletedDocuments"]).toBeUndefined();
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildHistoryParams({
+        applikation: "LrKons",
+        aenderungen_von: "2024-01-01",
+        aenderungen_bis: "2024-01-31",
+        include_deleted: true,
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Anwendung"]).toBe("LrKons");
+      expect(params["AenderungenVon"]).toBe("2024-01-01");
+      expect(params["AenderungenBis"]).toBe("2024-01-31");
+      expect(params["IncludeDeletedDocuments"]).toBe("true");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
+describe("Verordnungen API parameter mapping", () => {
+  // Bundesland mapping constant (mirrors server.ts)
+  const BUNDESLAND_MAPPING: Record<string, string> = {
+    Wien: "SucheInWien",
+    Niederoesterreich: "SucheInNiederoesterreich",
+    Oberoesterreich: "SucheInOberoesterreich",
+    Salzburg: "SucheInSalzburg",
+    Tirol: "SucheInTirol",
+    Vorarlberg: "SucheInVorarlberg",
+    Kaernten: "SucheInKaernten",
+    Steiermark: "SucheInSteiermark",
+    Burgenland: "SucheInBurgenland",
+  };
+
+  // Re-implement the mapping logic for testing
+  function buildVerordnungenParams(args: {
+    suchworte?: string;
+    titel?: string;
+    bundesland?: string;
+    vblnummer?: string;
+    jahrgang?: string;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const { suchworte, titel, bundesland, vblnummer, jahrgang, seite = 1, limit = 20 } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    // Uses Landesrecht endpoint with Applikation="Vbl"
+    const params: Record<string, unknown> = {
+      Applikation: "Vbl",
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (vblnummer) params["Vblnummer"] = vblnummer;
+    if (jahrgang) params["Jahrgang"] = jahrgang;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    return params;
+  }
+
+  describe("fixed applikation", () => {
+    it("should always set Applikation to 'Vbl'", () => {
+      const params = buildVerordnungenParams({ suchworte: "Test" });
+
+      expect(params["Applikation"]).toBe("Vbl");
+    });
+  });
+
+  describe("vblnummer parameter", () => {
+    it("should map vblnummer to 'Vblnummer' API parameter", () => {
+      const params = buildVerordnungenParams({ vblnummer: "25" });
+
+      expect(params["Vblnummer"]).toBe("25");
+    });
+
+    it("should not include Vblnummer when vblnummer is not provided", () => {
+      const params = buildVerordnungenParams({ suchworte: "Test" });
+
+      expect(params["Vblnummer"]).toBeUndefined();
+    });
+  });
+
+  describe("jahrgang parameter", () => {
+    it("should map jahrgang to 'Jahrgang' API parameter", () => {
+      const params = buildVerordnungenParams({ jahrgang: "2023" });
+
+      expect(params["Jahrgang"]).toBe("2023");
+    });
+  });
+
+  describe("bundesland parameter", () => {
+    it("should map Tirol to Bundesland.SucheInTirol=true", () => {
+      const params = buildVerordnungenParams({ bundesland: "Tirol", suchworte: "Parkordnung" });
+
+      expect(params["Bundesland.SucheInTirol"]).toBe("true");
+    });
+
+    it("should map all 9 Bundeslaender correctly", () => {
+      const bundeslaender = Object.keys(BUNDESLAND_MAPPING);
+      for (const bl of bundeslaender) {
+        const params = buildVerordnungenParams({ bundesland: bl, suchworte: "test" });
+        expect(params[`Bundesland.${BUNDESLAND_MAPPING[bl]}`]).toBe("true");
+      }
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildVerordnungenParams({
+        suchworte: "Parkordnung",
+        titel: "Parkverordnung",
+        bundesland: "Tirol",
+        vblnummer: "25",
+        jahrgang: "2023",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Applikation"]).toBe("Vbl");
+      expect(params["Suchworte"]).toBe("Parkordnung");
+      expect(params["Titel"]).toBe("Parkverordnung");
+      expect(params["Bundesland.SucheInTirol"]).toBe("true");
+      expect(params["Vblnummer"]).toBe("25");
+      expect(params["Jahrgang"]).toBe("2023");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
 describe("Sonstige API parameter mapping", () => {
   // Re-implement the mapping logic for testing
   function buildSonstigeParams(args: {

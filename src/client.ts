@@ -243,6 +243,16 @@ export async function searchSonstige(
 }
 
 /**
+ * Search document change history (History).
+ */
+export async function searchHistory(
+  params: Record<string, unknown>,
+  timeout = DEFAULT_TIMEOUT
+): Promise<NormalizedSearchResults> {
+  return request("History", params, timeout);
+}
+
+/**
  * Fetch HTML content from a document URL.
  */
 export async function getDocumentContent(

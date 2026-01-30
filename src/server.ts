@@ -18,6 +18,7 @@ import {
   searchBezirke,
   searchBundesrecht,
   searchGemeinden,
+  searchHistory,
   searchJudikatur,
   searchLandesrecht,
   searchSonstige,
@@ -1131,6 +1132,176 @@ Example queries:
 
     try {
       const apiResponse = await searchSonstige(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 11: ris_history
+// =============================================================================
+
+server.tool(
+  "ris_history",
+  `Search document change history (Aenderungshistorie).
+
+Use this tool to track changes to legal documents over time.
+Shows when documents were created, modified, or deleted.
+
+Example queries:
+  - applikation="BrKons", aenderungen_von="2024-01-01", aenderungen_bis="2024-01-31"
+  - applikation="LrKons", aenderungen_von="2024-06-01"`,
+  {
+    applikation: z
+      .string()
+      .describe(
+        'Application to search history for - e.g., "BrKons" (federal law), "LrKons" (state law), "Vfgh", "Vwgh", etc.'
+      ),
+    aenderungen_von: z.string().optional().describe("Changes from date (YYYY-MM-DD)"),
+    aenderungen_bis: z.string().optional().describe("Changes to date (YYYY-MM-DD)"),
+    include_deleted: z
+      .boolean()
+      .default(false)
+      .describe("Include deleted documents in results (default: false)"),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const { applikation, aenderungen_von, aenderungen_bis, include_deleted, seite, limit, response_format } =
+      args;
+
+    // Validate at least one date parameter
+    if (!aenderungen_von && !aenderungen_bis) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Datumsparameter an:\n" +
+              "- `aenderungen_von` fuer Aenderungen ab Datum\n" +
+              "- `aenderungen_bis` fuer Aenderungen bis Datum",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    // Note: History endpoint uses "Anwendung" not "Applikation"
+    const params: Record<string, unknown> = {
+      Anwendung: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (aenderungen_von) params["AenderungenVon"] = aenderungen_von;
+    if (aenderungen_bis) params["AenderungenBis"] = aenderungen_bis;
+    if (include_deleted) params["IncludeDeletedDocuments"] = "true";
+
+    try {
+      const apiResponse = await searchHistory(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 12: ris_verordnungen
+// =============================================================================
+
+server.tool(
+  "ris_verordnungen",
+  `Search Austrian state ordinance gazettes (Verordnungsblaetter der Laender).
+
+Use this tool to find official publications of state/provincial ordinances.
+Covers ordinance gazettes (Verordnungsblaetter) from all 9 federal states.
+
+Example queries:
+  - bundesland="Tirol", suchworte="Parkordnung"
+  - vblnummer="25", jahrgang="2023", bundesland="Wien"`,
+  {
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in gazette titles"),
+    bundesland: z
+      .string()
+      .optional()
+      .describe(
+        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+      ),
+    vblnummer: z.string().optional().describe('Ordinance gazette number (e.g., "25")'),
+    jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const { suchworte, titel, bundesland, vblnummer, jahrgang, seite, limit, response_format } = args;
+
+    // Validate at least one search parameter
+    if (!suchworte && !titel && !bundesland && !vblnummer && !jahrgang) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
+              "- `suchworte` fuer Volltextsuche\n" +
+              "- `titel` fuer Suche in Titeln\n" +
+              "- `bundesland` fuer Bundesland\n" +
+              "- `vblnummer` fuer Verordnungsblatt-Nummer\n" +
+              "- `jahrgang` fuer Jahr",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    // Uses Landesrecht endpoint with Applikation="Vbl"
+    const params: Record<string, unknown> = {
+      Applikation: "Vbl",
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (vblnummer) params["Vblnummer"] = vblnummer;
+    if (jahrgang) params["Jahrgang"] = jahrgang;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    try {
+      const apiResponse = await searchLandesrecht(params);
       const searchResult = parseSearchResults(apiResponse);
       const formatted = formatSearchResults(searchResult, response_format);
       const result = truncateResponse(formatted);
