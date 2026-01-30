@@ -1409,6 +1409,21 @@ describe("Bezirke API parameter mapping", () => {
 // =============================================================================
 
 describe("Gemeinden API parameter mapping", () => {
+  // Index values for Gr application (from API documentation)
+  const GEMEINDEN_INDEX_VALUES = [
+    "Undefined",
+    "VertretungskoerperUndAllgemeineVerwaltung",
+    "OeffentlicheOrdnungUndSicherheit",
+    "UnterrichtErziehungSportUndWissenschaft",
+    "KunstKulturUndKultus",
+    "SozialeWohlfahrtUndWohnbaufoerderung",
+    "Gesundheit",
+    "StraßenUndWasserbauVerkehr",
+    "Wirtschaftsfoerderung",
+    "Dienstleistungen",
+    "Finanzwirtschaft",
+  ] as const;
+
   // Re-implement the mapping logic for testing
   function buildGemeindenParams(args: {
     suchworte?: string;
@@ -1416,10 +1431,43 @@ describe("Gemeinden API parameter mapping", () => {
     bundesland?: string;
     gemeinde?: string;
     applikation?: "Gr" | "GrA";
+    // Gr-specific
+    geschaeftszahl?: string;
+    index?: typeof GEMEINDEN_INDEX_VALUES[number];
+    fassung_vom?: string;
+    sortierung_spalte_gr?: "Geschaeftszahl" | "Bundesland" | "Gemeinde";
+    // GrA-specific
+    bezirk?: string;
+    gemeindeverband?: string;
+    kundmachungsnummer?: string;
+    kundmachungsdatum_von?: string;
+    kundmachungsdatum_bis?: string;
+    // Common
+    im_ris_seit?: string;
+    sortierung_richtung?: "Ascending" | "Descending";
     seite?: number;
     limit?: number;
   }): Record<string, unknown> {
-    const { suchworte, titel, bundesland, gemeinde, applikation = "Gr", seite = 1, limit = 20 } = args;
+    const {
+      suchworte,
+      titel,
+      bundesland,
+      gemeinde,
+      applikation = "Gr",
+      geschaeftszahl,
+      index,
+      fassung_vom,
+      sortierung_spalte_gr,
+      bezirk,
+      gemeindeverband,
+      kundmachungsnummer,
+      kundmachungsdatum_von,
+      kundmachungsdatum_bis,
+      im_ris_seit,
+      sortierung_richtung,
+      seite = 1,
+      limit = 20,
+    } = args;
 
     const limitToDokumenteProSeite = (l: number): string => {
       const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
@@ -1432,10 +1480,30 @@ describe("Gemeinden API parameter mapping", () => {
       Seitennummer: seite,
     };
 
+    // Common parameters
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
     if (gemeinde) params["Gemeinde"] = gemeinde;
     if (bundesland) params["Bundesland"] = bundesland;
+    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
+    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
+
+    // Gr-specific parameters
+    if (applikation === "Gr") {
+      if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+      if (index) params["Index"] = index;
+      if (fassung_vom) params["FassungVom"] = fassung_vom;
+      if (sortierung_spalte_gr) params["Sortierung.SortedByColumn"] = sortierung_spalte_gr;
+    }
+
+    // GrA-specific parameters
+    if (applikation === "GrA") {
+      if (bezirk) params["Bezirk"] = bezirk;
+      if (gemeindeverband) params["Gemeindeverband"] = gemeindeverband;
+      if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
+      if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
+      if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
+    }
 
     return params;
   }
@@ -1492,14 +1560,152 @@ describe("Gemeinden API parameter mapping", () => {
     });
   });
 
+  describe("Gr-specific parameters", () => {
+    it("should map geschaeftszahl to 'Geschaeftszahl' for Gr", () => {
+      const params = buildGemeindenParams({
+        applikation: "Gr",
+        geschaeftszahl: "GZ-2024-123",
+      });
+
+      expect(params["Geschaeftszahl"]).toBe("GZ-2024-123");
+    });
+
+    it("should not include geschaeftszahl for GrA", () => {
+      const params = buildGemeindenParams({
+        applikation: "GrA",
+        suchworte: "Test",
+        geschaeftszahl: "GZ-2024-123",
+      });
+
+      expect(params["Geschaeftszahl"]).toBeUndefined();
+    });
+
+    it("should map index to 'Index' for Gr", () => {
+      const params = buildGemeindenParams({
+        applikation: "Gr",
+        index: "Gesundheit",
+      });
+
+      expect(params["Index"]).toBe("Gesundheit");
+    });
+
+    it("should support all 11 index values", () => {
+      for (const idx of GEMEINDEN_INDEX_VALUES) {
+        const params = buildGemeindenParams({
+          applikation: "Gr",
+          index: idx,
+        });
+
+        expect(params["Index"]).toBe(idx);
+      }
+    });
+
+    it("should map fassung_vom to 'FassungVom' for Gr", () => {
+      const params = buildGemeindenParams({
+        applikation: "Gr",
+        suchworte: "Test",
+        fassung_vom: "2023-06-15",
+      });
+
+      expect(params["FassungVom"]).toBe("2023-06-15");
+    });
+
+    it("should map sortierung_spalte_gr to 'Sortierung.SortedByColumn' for Gr", () => {
+      const params = buildGemeindenParams({
+        applikation: "Gr",
+        suchworte: "Test",
+        sortierung_spalte_gr: "Gemeinde",
+      });
+
+      expect(params["Sortierung.SortedByColumn"]).toBe("Gemeinde");
+    });
+  });
+
+  describe("GrA-specific parameters", () => {
+    it("should map bezirk to 'Bezirk' for GrA", () => {
+      const params = buildGemeindenParams({
+        applikation: "GrA",
+        bezirk: "Bregenz",
+      });
+
+      expect(params["Bezirk"]).toBe("Bregenz");
+    });
+
+    it("should not include bezirk for Gr", () => {
+      const params = buildGemeindenParams({
+        applikation: "Gr",
+        suchworte: "Test",
+        bezirk: "Bregenz",
+      });
+
+      expect(params["Bezirk"]).toBeUndefined();
+    });
+
+    it("should map gemeindeverband to 'Gemeindeverband' for GrA", () => {
+      const params = buildGemeindenParams({
+        applikation: "GrA",
+        gemeindeverband: "Rheindelta",
+      });
+
+      expect(params["Gemeindeverband"]).toBe("Rheindelta");
+    });
+
+    it("should map kundmachungsnummer to 'Kundmachungsnummer' for GrA", () => {
+      const params = buildGemeindenParams({
+        applikation: "GrA",
+        kundmachungsnummer: "KM-2024-001",
+      });
+
+      expect(params["Kundmachungsnummer"]).toBe("KM-2024-001");
+    });
+
+    it("should map kundmachungsdatum to 'Kundmachungsdatum.Von/Bis' for GrA", () => {
+      const params = buildGemeindenParams({
+        applikation: "GrA",
+        suchworte: "Test",
+        kundmachungsdatum_von: "2024-01-01",
+        kundmachungsdatum_bis: "2024-12-31",
+      });
+
+      expect(params["Kundmachungsdatum.Von"]).toBe("2024-01-01");
+      expect(params["Kundmachungsdatum.Bis"]).toBe("2024-12-31");
+    });
+  });
+
+  describe("common parameters", () => {
+    it("should map im_ris_seit to 'ImRisSeit'", () => {
+      const params = buildGemeindenParams({
+        suchworte: "Test",
+        im_ris_seit: "EinemMonat",
+      });
+
+      expect(params["ImRisSeit"]).toBe("EinemMonat");
+    });
+
+    it("should map sortierung_richtung to 'Sortierung.SortDirection'", () => {
+      const params = buildGemeindenParams({
+        suchworte: "Test",
+        sortierung_richtung: "Descending",
+      });
+
+      expect(params["Sortierung.SortDirection"]).toBe("Descending");
+    });
+  });
+
   describe("combined parameters", () => {
-    it("should correctly map all parameters together", () => {
+    it("should correctly map all Gr parameters together", () => {
       const params = buildGemeindenParams({
         suchworte: "Parkgebuehren",
         titel: "Gebuehrenordnung",
         bundesland: "Steiermark",
         gemeinde: "Graz",
         applikation: "Gr",
+        geschaeftszahl: "GZ-2024-123",
+        index: "Finanzwirtschaft",
+        fassung_vom: "2023-06-15",
+        im_ris_seit: "EinemJahr",
+        sortierung_richtung: "Descending",
+        sortierung_spalte_gr: "Gemeinde",
         seite: 2,
         limit: 50,
       });
@@ -1509,8 +1715,48 @@ describe("Gemeinden API parameter mapping", () => {
       expect(params["Titel"]).toBe("Gebuehrenordnung");
       expect(params["Bundesland"]).toBe("Steiermark");
       expect(params["Gemeinde"]).toBe("Graz");
+      expect(params["Geschaeftszahl"]).toBe("GZ-2024-123");
+      expect(params["Index"]).toBe("Finanzwirtschaft");
+      expect(params["FassungVom"]).toBe("2023-06-15");
+      expect(params["ImRisSeit"]).toBe("EinemJahr");
+      expect(params["Sortierung.SortDirection"]).toBe("Descending");
+      expect(params["Sortierung.SortedByColumn"]).toBe("Gemeinde");
       expect(params["Seitennummer"]).toBe(2);
       expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+
+    it("should correctly map all GrA parameters together", () => {
+      const params = buildGemeindenParams({
+        suchworte: "Abfallgebuehren",
+        titel: "Abfallordnung",
+        bundesland: "Vorarlberg",
+        gemeinde: "Hard",
+        applikation: "GrA",
+        bezirk: "Bregenz",
+        gemeindeverband: "Rheindelta",
+        kundmachungsnummer: "KM-2024-001",
+        kundmachungsdatum_von: "2024-01-01",
+        kundmachungsdatum_bis: "2024-12-31",
+        im_ris_seit: "DreiMonaten",
+        sortierung_richtung: "Ascending",
+        seite: 1,
+        limit: 20,
+      });
+
+      expect(params["Applikation"]).toBe("GrA");
+      expect(params["Suchworte"]).toBe("Abfallgebuehren");
+      expect(params["Titel"]).toBe("Abfallordnung");
+      expect(params["Bundesland"]).toBe("Vorarlberg");
+      expect(params["Gemeinde"]).toBe("Hard");
+      expect(params["Bezirk"]).toBe("Bregenz");
+      expect(params["Gemeindeverband"]).toBe("Rheindelta");
+      expect(params["Kundmachungsnummer"]).toBe("KM-2024-001");
+      expect(params["Kundmachungsdatum.Von"]).toBe("2024-01-01");
+      expect(params["Kundmachungsdatum.Bis"]).toBe("2024-12-31");
+      expect(params["ImRisSeit"]).toBe("DreiMonaten");
+      expect(params["Sortierung.SortDirection"]).toBe("Ascending");
+      expect(params["Seitennummer"]).toBe(1);
+      expect(params["DokumenteProSeite"]).toBe("Twenty");
     });
   });
 });
@@ -1586,50 +1832,50 @@ describe("History search requirements", () => {
 });
 
 describe("Verordnungen search requirements", () => {
-  it("should require at least one of: suchworte, titel, bundesland, vblnummer, jahrgang", () => {
+  it("should require at least one of: suchworte, titel, bundesland, kundmachungsnummer, kundmachungsdatum_von", () => {
     const params1 = { suchworte: "test" };
     const params2 = { titel: "Verordnung" };
     const params3 = { bundesland: "Tirol" };
-    const params4 = { vblnummer: "25" };
-    const params5 = { jahrgang: "2023" };
+    const params4 = { kundmachungsnummer: "25" };
+    const params5 = { kundmachungsdatum_von: "2024-01-01" };
     const emptyParams = {};
 
     const hasRequired1 =
       params1.suchworte ||
       (params1 as { titel?: string }).titel ||
       (params1 as { bundesland?: string }).bundesland ||
-      (params1 as { vblnummer?: string }).vblnummer ||
-      (params1 as { jahrgang?: string }).jahrgang;
+      (params1 as { kundmachungsnummer?: string }).kundmachungsnummer ||
+      (params1 as { kundmachungsdatum_von?: string }).kundmachungsdatum_von;
     const hasRequired2 =
       (params2 as { suchworte?: string }).suchworte ||
       params2.titel ||
       (params2 as { bundesland?: string }).bundesland ||
-      (params2 as { vblnummer?: string }).vblnummer ||
-      (params2 as { jahrgang?: string }).jahrgang;
+      (params2 as { kundmachungsnummer?: string }).kundmachungsnummer ||
+      (params2 as { kundmachungsdatum_von?: string }).kundmachungsdatum_von;
     const hasRequired3 =
       (params3 as { suchworte?: string }).suchworte ||
       (params3 as { titel?: string }).titel ||
       params3.bundesland ||
-      (params3 as { vblnummer?: string }).vblnummer ||
-      (params3 as { jahrgang?: string }).jahrgang;
+      (params3 as { kundmachungsnummer?: string }).kundmachungsnummer ||
+      (params3 as { kundmachungsdatum_von?: string }).kundmachungsdatum_von;
     const hasRequired4 =
       (params4 as { suchworte?: string }).suchworte ||
       (params4 as { titel?: string }).titel ||
       (params4 as { bundesland?: string }).bundesland ||
-      params4.vblnummer ||
-      (params4 as { jahrgang?: string }).jahrgang;
+      params4.kundmachungsnummer ||
+      (params4 as { kundmachungsdatum_von?: string }).kundmachungsdatum_von;
     const hasRequired5 =
       (params5 as { suchworte?: string }).suchworte ||
       (params5 as { titel?: string }).titel ||
       (params5 as { bundesland?: string }).bundesland ||
-      (params5 as { vblnummer?: string }).vblnummer ||
-      params5.jahrgang;
+      (params5 as { kundmachungsnummer?: string }).kundmachungsnummer ||
+      params5.kundmachungsdatum_von;
     const hasRequiredEmpty =
       (emptyParams as { suchworte?: string }).suchworte ||
       (emptyParams as { titel?: string }).titel ||
       (emptyParams as { bundesland?: string }).bundesland ||
-      (emptyParams as { vblnummer?: string }).vblnummer ||
-      (emptyParams as { jahrgang?: string }).jahrgang;
+      (emptyParams as { kundmachungsnummer?: string }).kundmachungsnummer ||
+      (emptyParams as { kundmachungsdatum_von?: string }).kundmachungsdatum_von;
 
     expect(hasRequired1).toBeTruthy();
     expect(hasRequired2).toBeTruthy();
@@ -1637,6 +1883,133 @@ describe("Verordnungen search requirements", () => {
     expect(hasRequired4).toBeTruthy();
     expect(hasRequired5).toBeTruthy();
     expect(hasRequiredEmpty).toBeFalsy();
+  });
+});
+
+describe("Verordnungen API parameter mapping", () => {
+  // Re-implement the mapping logic for testing
+  function buildVerordnungenParams(args: {
+    suchworte?: string;
+    titel?: string;
+    bundesland?: string;
+    kundmachungsnummer?: string;
+    kundmachungsdatum_von?: string;
+    kundmachungsdatum_bis?: string;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const {
+      suchworte,
+      titel,
+      bundesland,
+      kundmachungsnummer,
+      kundmachungsdatum_von,
+      kundmachungsdatum_bis,
+      seite = 1,
+      limit = 20,
+    } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: "Vbl",
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    // Note: Vbl uses direct Bundesland value, NOT the SucheIn format used by Lgbl
+    if (bundesland) params["Bundesland"] = bundesland;
+    if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
+    if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
+    if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
+
+    return params;
+  }
+
+  describe("fixed applikation", () => {
+    it("should always set Applikation to 'Vbl'", () => {
+      const params = buildVerordnungenParams({ suchworte: "test" });
+
+      expect(params["Applikation"]).toBe("Vbl");
+    });
+  });
+
+  describe("suchworte parameter", () => {
+    it("should map suchworte to 'Suchworte' API parameter", () => {
+      const params = buildVerordnungenParams({ suchworte: "Wolf" });
+
+      expect(params["Suchworte"]).toBe("Wolf");
+    });
+  });
+
+  describe("titel parameter", () => {
+    it("should map titel to 'Titel' API parameter", () => {
+      const params = buildVerordnungenParams({ titel: "Verordnung" });
+
+      expect(params["Titel"]).toBe("Verordnung");
+    });
+  });
+
+  describe("bundesland parameter", () => {
+    it("should map bundesland directly to 'Bundesland' (NOT SucheIn format)", () => {
+      const params = buildVerordnungenParams({ bundesland: "Tirol" });
+
+      // Vbl uses direct value, unlike Lgbl which uses Bundesland.SucheInTirol
+      expect(params["Bundesland"]).toBe("Tirol");
+      expect(params["Bundesland.SucheInTirol"]).toBeUndefined();
+    });
+  });
+
+  describe("kundmachungsnummer parameter", () => {
+    it("should map kundmachungsnummer to 'Kundmachungsnummer' API parameter", () => {
+      const params = buildVerordnungenParams({ kundmachungsnummer: "25" });
+
+      expect(params["Kundmachungsnummer"]).toBe("25");
+    });
+  });
+
+  describe("date parameters", () => {
+    it("should map kundmachungsdatum_von to 'Kundmachungsdatum.Von'", () => {
+      const params = buildVerordnungenParams({ kundmachungsdatum_von: "2024-01-01" });
+
+      expect(params["Kundmachungsdatum.Von"]).toBe("2024-01-01");
+    });
+
+    it("should map kundmachungsdatum_bis to 'Kundmachungsdatum.Bis'", () => {
+      const params = buildVerordnungenParams({ kundmachungsdatum_bis: "2024-12-31" });
+
+      expect(params["Kundmachungsdatum.Bis"]).toBe("2024-12-31");
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildVerordnungenParams({
+        suchworte: "Wolf",
+        titel: "Verordnung",
+        bundesland: "Tirol",
+        kundmachungsnummer: "25",
+        kundmachungsdatum_von: "2024-01-01",
+        kundmachungsdatum_bis: "2024-12-31",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Applikation"]).toBe("Vbl");
+      expect(params["Suchworte"]).toBe("Wolf");
+      expect(params["Titel"]).toBe("Verordnung");
+      expect(params["Bundesland"]).toBe("Tirol");
+      expect(params["Kundmachungsnummer"]).toBe("25");
+      expect(params["Kundmachungsdatum.Von"]).toBe("2024-01-01");
+      expect(params["Kundmachungsdatum.Bis"]).toBe("2024-12-31");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
   });
 });
 
@@ -1860,17 +2233,109 @@ describe("Verordnungen API parameter mapping", () => {
 });
 
 describe("Sonstige API parameter mapping", () => {
-  // Re-implement the mapping logic for testing
+  // Constants for Sonstige applications
+  const UPTS_PARTEIEN = [
+    "SPÖ - Sozialdemokratische Partei Österreichs",
+    "ÖVP - Österreichische Volkspartei",
+    "FPÖ - Freiheitliche Partei Österreichs",
+    "GRÜNE - Die Grünen - Die Grüne Alternative",
+    "NEOS - NEOS – Das Neue Österreich und Liberales Forum",
+    "BZÖ - Bündnis Zukunft Österreich",
+  ] as const;
+
+  const BUNDESMINISTERIEN = [
+    "BKA (Bundeskanzleramt)",
+    "BMFFIM (Bundesministerin für Frauen, Familie, Integration und Medien im Bundeskanzleramt)",
+    "BMEUV (Bundesministerin für EU und Verfassung im Bundeskanzleramt)",
+    "BMKOES (Bundesministerium für Kunst, Kultur, öffentlichen Dienst und Sport)",
+    "BMEIA (Bundesministerium für europäische und internationale Angelegenheiten)",
+    "BMAW (Bundesministerium für Arbeit und Wirtschaft)",
+    "BMBWF (Bundesministerium für Bildung, Wissenschaft und Forschung)",
+    "BMF (Bundesministerium für Finanzen)",
+    "BMI (Bundesministerium für Inneres)",
+    "BMJ (Bundesministerium für Justiz)",
+    "BMK (Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie)",
+    "BMLV (Bundesministerium für Landesverteidigung)",
+    "BML (Bundesministerium für Land- und Forstwirtschaft, Regionen und Wasserwirtschaft)",
+    "BMSGPK (Bundesministerium für Soziales, Gesundheit, Pflege und Konsumentenschutz)",
+  ] as const;
+
+  // Re-implement the mapping logic for testing (extended version)
   function buildSonstigeParams(args: {
     applikation: "PruefGewO" | "Avsv" | "Spg" | "Avn" | "KmGer" | "Upts" | "Mrp" | "Erlaesse";
     suchworte?: string;
     titel?: string;
     datum_von?: string;
     datum_bis?: string;
+    // Common
+    im_ris_seit?: string;
+    sortierung_richtung?: "Ascending" | "Descending";
+    geschaeftszahl?: string;
+    norm?: string;
+    fassung_vom?: string;
+    // Mrp
+    einbringer?: string;
+    sitzungsnummer?: string;
+    gesetzgebungsperiode?: string;
+    // Erlaesse
+    bundesministerium?: typeof BUNDESMINISTERIEN[number];
+    abteilung?: string;
+    fundstelle?: string;
+    // Upts
+    partei?: typeof UPTS_PARTEIEN[number];
+    // KmGer
+    kmger_typ?: "Konkursverfahren" | "Sanierungsverfahren";
+    gericht?: string;
+    // Avsv
+    dokumentart?: "Richtlinie" | "Kundmachung" | "Verlautbarung";
+    urheber?: string;
+    avsvnummer?: string;
+    // Avn
+    avnnummer?: string;
+    avn_typ?: "Kundmachung" | "Verordnung" | "Erlass";
+    // Spg
+    spgnummer?: string;
+    osg_typ?: "ÖSG" | "ÖSG - Großgeräteplan";
+    rsg_typ?: "RSG" | "RSG - Großgeräteplan";
+    rsg_land?: string;
+    // PruefGewO
+    pruefgewo_typ?: "Befähigungsprüfung" | "Eignungsprüfung" | "Meisterprüfung";
     seite?: number;
     limit?: number;
   }): Record<string, unknown> {
-    const { applikation, suchworte, titel, datum_von, datum_bis, seite = 1, limit = 20 } = args;
+    const {
+      applikation,
+      suchworte,
+      titel,
+      datum_von,
+      datum_bis,
+      im_ris_seit,
+      sortierung_richtung,
+      geschaeftszahl,
+      norm,
+      fassung_vom,
+      einbringer,
+      sitzungsnummer,
+      gesetzgebungsperiode,
+      bundesministerium,
+      abteilung,
+      fundstelle,
+      partei,
+      kmger_typ,
+      gericht,
+      dokumentart,
+      urheber,
+      avsvnummer,
+      avnnummer,
+      avn_typ,
+      spgnummer,
+      osg_typ,
+      rsg_typ,
+      rsg_land,
+      pruefgewo_typ,
+      seite = 1,
+      limit = 20,
+    } = args;
 
     const limitToDokumenteProSeite = (l: number): string => {
       const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
@@ -1883,8 +2348,13 @@ describe("Sonstige API parameter mapping", () => {
       Seitennummer: seite,
     };
 
+    // Common parameters
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
+    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
+    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
+
+    // Build date parameters based on application type
     if (datum_von || datum_bis) {
       switch (applikation) {
         case "Mrp":
@@ -1911,6 +2381,51 @@ describe("Sonstige API parameter mapping", () => {
           if (datum_bis) params["Kundmachung.Bis"] = datum_bis;
           break;
       }
+    }
+
+    // Application-specific parameters
+    switch (applikation) {
+      case "Mrp":
+        if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+        if (einbringer) params["Einbringer"] = einbringer;
+        if (sitzungsnummer) params["Sitzungsnummer"] = sitzungsnummer;
+        if (gesetzgebungsperiode) params["Gesetzgebungsperiode"] = gesetzgebungsperiode;
+        break;
+      case "Erlaesse":
+        if (norm) params["Norm"] = norm;
+        if (fassung_vom) params["FassungVom"] = fassung_vom;
+        if (bundesministerium) params["Bundesministerium"] = bundesministerium;
+        if (abteilung) params["Abteilung"] = abteilung;
+        if (fundstelle) params["Fundstelle"] = fundstelle;
+        break;
+      case "Upts":
+        if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+        if (norm) params["Norm"] = norm;
+        if (partei) params["Partei"] = partei;
+        break;
+      case "KmGer":
+        if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+        if (kmger_typ) params["Typ"] = kmger_typ;
+        if (gericht) params["Gericht"] = gericht;
+        break;
+      case "Avsv":
+        if (dokumentart) params["Dokumentart"] = dokumentart;
+        if (urheber) params["Urheber"] = urheber;
+        if (avsvnummer) params["Avsvnummer"] = avsvnummer;
+        break;
+      case "Avn":
+        if (avnnummer) params["Avnnummer"] = avnnummer;
+        if (avn_typ) params["Typ"] = avn_typ;
+        break;
+      case "Spg":
+        if (spgnummer) params["Spgnummer"] = spgnummer;
+        if (osg_typ) params["OsgTyp"] = osg_typ;
+        if (rsg_typ) params["RsgTyp"] = rsg_typ;
+        if (rsg_land) params["RsgLand"] = rsg_land;
+        break;
+      case "PruefGewO":
+        if (pruefgewo_typ) params["Typ"] = pruefgewo_typ;
+        break;
     }
 
     return params;
@@ -2070,6 +2585,294 @@ describe("Sonstige API parameter mapping", () => {
     });
   });
 
+  describe("common extended parameters", () => {
+    it("should map im_ris_seit to 'ImRisSeit'", () => {
+      const params = buildSonstigeParams({
+        applikation: "Mrp",
+        suchworte: "test",
+        im_ris_seit: "EinemMonat",
+      });
+
+      expect(params["ImRisSeit"]).toBe("EinemMonat");
+    });
+
+    it("should map sortierung_richtung to 'Sortierung.SortDirection'", () => {
+      const params = buildSonstigeParams({
+        applikation: "Mrp",
+        suchworte: "test",
+        sortierung_richtung: "Descending",
+      });
+
+      expect(params["Sortierung.SortDirection"]).toBe("Descending");
+    });
+  });
+
+  describe("Mrp-specific parameters", () => {
+    it("should map geschaeftszahl to 'Geschaeftszahl' for Mrp", () => {
+      const params = buildSonstigeParams({
+        applikation: "Mrp",
+        geschaeftszahl: "MRP-2023-001",
+      });
+
+      expect(params["Geschaeftszahl"]).toBe("MRP-2023-001");
+    });
+
+    it("should map einbringer to 'Einbringer' for Mrp", () => {
+      const params = buildSonstigeParams({
+        applikation: "Mrp",
+        einbringer: "BMF",
+      });
+
+      expect(params["Einbringer"]).toBe("BMF");
+    });
+
+    it("should map sitzungsnummer to 'Sitzungsnummer' for Mrp", () => {
+      const params = buildSonstigeParams({
+        applikation: "Mrp",
+        sitzungsnummer: "45",
+      });
+
+      expect(params["Sitzungsnummer"]).toBe("45");
+    });
+
+    it("should map gesetzgebungsperiode to 'Gesetzgebungsperiode' for Mrp", () => {
+      const params = buildSonstigeParams({
+        applikation: "Mrp",
+        gesetzgebungsperiode: "27",
+      });
+
+      expect(params["Gesetzgebungsperiode"]).toBe("27");
+    });
+  });
+
+  describe("Erlaesse-specific parameters", () => {
+    it("should map norm to 'Norm' for Erlaesse", () => {
+      const params = buildSonstigeParams({
+        applikation: "Erlaesse",
+        norm: "§ 5 EStG",
+      });
+
+      expect(params["Norm"]).toBe("§ 5 EStG");
+    });
+
+    it("should map fassung_vom to 'FassungVom' for Erlaesse", () => {
+      const params = buildSonstigeParams({
+        applikation: "Erlaesse",
+        suchworte: "test",
+        fassung_vom: "2023-06-15",
+      });
+
+      expect(params["FassungVom"]).toBe("2023-06-15");
+    });
+
+    it("should map bundesministerium to 'Bundesministerium' for Erlaesse", () => {
+      const params = buildSonstigeParams({
+        applikation: "Erlaesse",
+        bundesministerium: "BMF (Bundesministerium für Finanzen)",
+      });
+
+      expect(params["Bundesministerium"]).toBe("BMF (Bundesministerium für Finanzen)");
+    });
+
+    it("should support all 14 Bundesministerien", () => {
+      for (const bm of BUNDESMINISTERIEN) {
+        const params = buildSonstigeParams({
+          applikation: "Erlaesse",
+          bundesministerium: bm,
+        });
+
+        expect(params["Bundesministerium"]).toBe(bm);
+      }
+    });
+
+    it("should map abteilung to 'Abteilung' for Erlaesse", () => {
+      const params = buildSonstigeParams({
+        applikation: "Erlaesse",
+        suchworte: "test",
+        abteilung: "III/2",
+      });
+
+      expect(params["Abteilung"]).toBe("III/2");
+    });
+
+    it("should map fundstelle to 'Fundstelle' for Erlaesse", () => {
+      const params = buildSonstigeParams({
+        applikation: "Erlaesse",
+        suchworte: "test",
+        fundstelle: "BMF-010311/0012-VI/1/2023",
+      });
+
+      expect(params["Fundstelle"]).toBe("BMF-010311/0012-VI/1/2023");
+    });
+  });
+
+  describe("Upts-specific parameters", () => {
+    it("should map geschaeftszahl to 'Geschaeftszahl' for Upts", () => {
+      const params = buildSonstigeParams({
+        applikation: "Upts",
+        geschaeftszahl: "UPTS-2023-001",
+      });
+
+      expect(params["Geschaeftszahl"]).toBe("UPTS-2023-001");
+    });
+
+    it("should map norm to 'Norm' for Upts", () => {
+      const params = buildSonstigeParams({
+        applikation: "Upts",
+        norm: "§ 10 PartG",
+      });
+
+      expect(params["Norm"]).toBe("§ 10 PartG");
+    });
+
+    it("should map partei to 'Partei' for Upts", () => {
+      const params = buildSonstigeParams({
+        applikation: "Upts",
+        partei: "SPÖ - Sozialdemokratische Partei Österreichs",
+      });
+
+      expect(params["Partei"]).toBe("SPÖ - Sozialdemokratische Partei Österreichs");
+    });
+
+    it("should support all 6 Parteien", () => {
+      for (const p of UPTS_PARTEIEN) {
+        const params = buildSonstigeParams({
+          applikation: "Upts",
+          partei: p,
+        });
+
+        expect(params["Partei"]).toBe(p);
+      }
+    });
+  });
+
+  describe("KmGer-specific parameters", () => {
+    it("should map geschaeftszahl to 'Geschaeftszahl' for KmGer", () => {
+      const params = buildSonstigeParams({
+        applikation: "KmGer",
+        geschaeftszahl: "6 S 123/23k",
+      });
+
+      expect(params["Geschaeftszahl"]).toBe("6 S 123/23k");
+    });
+
+    it("should map kmger_typ to 'Typ' for KmGer", () => {
+      const params = buildSonstigeParams({
+        applikation: "KmGer",
+        kmger_typ: "Konkursverfahren",
+      });
+
+      expect(params["Typ"]).toBe("Konkursverfahren");
+    });
+
+    it("should map gericht to 'Gericht' for KmGer", () => {
+      const params = buildSonstigeParams({
+        applikation: "KmGer",
+        gericht: "Handelsgericht Wien",
+      });
+
+      expect(params["Gericht"]).toBe("Handelsgericht Wien");
+    });
+  });
+
+  describe("Avsv-specific parameters", () => {
+    it("should map dokumentart to 'Dokumentart' for Avsv", () => {
+      const params = buildSonstigeParams({
+        applikation: "Avsv",
+        dokumentart: "Richtlinie",
+      });
+
+      expect(params["Dokumentart"]).toBe("Richtlinie");
+    });
+
+    it("should map urheber to 'Urheber' for Avsv", () => {
+      const params = buildSonstigeParams({
+        applikation: "Avsv",
+        urheber: "Dachverband der Sozialversicherungsträger",
+      });
+
+      expect(params["Urheber"]).toBe("Dachverband der Sozialversicherungsträger");
+    });
+
+    it("should map avsvnummer to 'Avsvnummer' for Avsv", () => {
+      const params = buildSonstigeParams({
+        applikation: "Avsv",
+        avsvnummer: "AVSV-2023-001",
+      });
+
+      expect(params["Avsvnummer"]).toBe("AVSV-2023-001");
+    });
+  });
+
+  describe("Avn-specific parameters", () => {
+    it("should map avnnummer to 'Avnnummer' for Avn", () => {
+      const params = buildSonstigeParams({
+        applikation: "Avn",
+        avnnummer: "AVN-2023-001",
+      });
+
+      expect(params["Avnnummer"]).toBe("AVN-2023-001");
+    });
+
+    it("should map avn_typ to 'Typ' for Avn", () => {
+      const params = buildSonstigeParams({
+        applikation: "Avn",
+        avn_typ: "Verordnung",
+      });
+
+      expect(params["Typ"]).toBe("Verordnung");
+    });
+  });
+
+  describe("Spg-specific parameters", () => {
+    it("should map spgnummer to 'Spgnummer' for Spg", () => {
+      const params = buildSonstigeParams({
+        applikation: "Spg",
+        spgnummer: "SPG-2023-001",
+      });
+
+      expect(params["Spgnummer"]).toBe("SPG-2023-001");
+    });
+
+    it("should map osg_typ to 'OsgTyp' for Spg", () => {
+      const params = buildSonstigeParams({
+        applikation: "Spg",
+        osg_typ: "ÖSG",
+      });
+
+      expect(params["OsgTyp"]).toBe("ÖSG");
+    });
+
+    it("should map rsg_typ to 'RsgTyp' for Spg", () => {
+      const params = buildSonstigeParams({
+        applikation: "Spg",
+        rsg_typ: "RSG - Großgeräteplan",
+      });
+
+      expect(params["RsgTyp"]).toBe("RSG - Großgeräteplan");
+    });
+
+    it("should map rsg_land to 'RsgLand' for Spg", () => {
+      const params = buildSonstigeParams({
+        applikation: "Spg",
+        rsg_land: "Wien",
+      });
+
+      expect(params["RsgLand"]).toBe("Wien");
+    });
+  });
+
+  describe("PruefGewO-specific parameters", () => {
+    it("should map pruefgewo_typ to 'Typ' for PruefGewO", () => {
+      const params = buildSonstigeParams({
+        applikation: "PruefGewO",
+        pruefgewo_typ: "Meisterprüfung",
+      });
+
+      expect(params["Typ"]).toBe("Meisterprüfung");
+    });
+  });
+
   describe("combined parameters", () => {
     it("should correctly map all parameters together for Mrp", () => {
       const params = buildSonstigeParams({
@@ -2078,6 +2881,12 @@ describe("Sonstige API parameter mapping", () => {
         titel: "Ministerrat",
         datum_von: "2023-01-01",
         datum_bis: "2023-12-31",
+        geschaeftszahl: "MRP-2023-001",
+        einbringer: "BMF",
+        sitzungsnummer: "45",
+        gesetzgebungsperiode: "27",
+        im_ris_seit: "EinemJahr",
+        sortierung_richtung: "Descending",
         seite: 2,
         limit: 50,
       });
@@ -2087,8 +2896,72 @@ describe("Sonstige API parameter mapping", () => {
       expect(params["Titel"]).toBe("Ministerrat");
       expect(params["Sitzungsdatum.Von"]).toBe("2023-01-01");
       expect(params["Sitzungsdatum.Bis"]).toBe("2023-12-31");
+      expect(params["Geschaeftszahl"]).toBe("MRP-2023-001");
+      expect(params["Einbringer"]).toBe("BMF");
+      expect(params["Sitzungsnummer"]).toBe("45");
+      expect(params["Gesetzgebungsperiode"]).toBe("27");
+      expect(params["ImRisSeit"]).toBe("EinemJahr");
+      expect(params["Sortierung.SortDirection"]).toBe("Descending");
       expect(params["Seitennummer"]).toBe(2);
       expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+
+    it("should correctly map all parameters together for Erlaesse", () => {
+      const params = buildSonstigeParams({
+        applikation: "Erlaesse",
+        suchworte: "Steuer",
+        titel: "Einkommensteuer",
+        datum_von: "2023-01-01",
+        datum_bis: "2023-12-31",
+        norm: "§ 5 EStG",
+        fassung_vom: "2023-06-15",
+        bundesministerium: "BMF (Bundesministerium für Finanzen)",
+        abteilung: "III/2",
+        fundstelle: "BMF-010311/0012-VI/1/2023",
+        im_ris_seit: "SechsMonaten",
+        sortierung_richtung: "Ascending",
+        seite: 1,
+        limit: 20,
+      });
+
+      expect(params["Applikation"]).toBe("Erlaesse");
+      expect(params["Suchworte"]).toBe("Steuer");
+      expect(params["Titel"]).toBe("Einkommensteuer");
+      expect(params["VonInkrafttretensdatum"]).toBe("2023-01-01");
+      expect(params["BisInkrafttretensdatum"]).toBe("2023-12-31");
+      expect(params["Norm"]).toBe("§ 5 EStG");
+      expect(params["FassungVom"]).toBe("2023-06-15");
+      expect(params["Bundesministerium"]).toBe("BMF (Bundesministerium für Finanzen)");
+      expect(params["Abteilung"]).toBe("III/2");
+      expect(params["Fundstelle"]).toBe("BMF-010311/0012-VI/1/2023");
+      expect(params["ImRisSeit"]).toBe("SechsMonaten");
+      expect(params["Sortierung.SortDirection"]).toBe("Ascending");
+      expect(params["Seitennummer"]).toBe(1);
+      expect(params["DokumenteProSeite"]).toBe("Twenty");
+    });
+
+    it("should correctly map all parameters together for Upts", () => {
+      const params = buildSonstigeParams({
+        applikation: "Upts",
+        suchworte: "Spende",
+        geschaeftszahl: "UPTS-2023-001",
+        norm: "§ 10 PartG",
+        partei: "SPÖ - Sozialdemokratische Partei Österreichs",
+        datum_von: "2023-01-01",
+        datum_bis: "2023-12-31",
+        seite: 1,
+        limit: 10,
+      });
+
+      expect(params["Applikation"]).toBe("Upts");
+      expect(params["Suchworte"]).toBe("Spende");
+      expect(params["Geschaeftszahl"]).toBe("UPTS-2023-001");
+      expect(params["Norm"]).toBe("§ 10 PartG");
+      expect(params["Partei"]).toBe("SPÖ - Sozialdemokratische Partei Österreichs");
+      expect(params["Entscheidungsdatum.Von"]).toBe("2023-01-01");
+      expect(params["Entscheidungsdatum.Bis"]).toBe("2023-12-31");
+      expect(params["Seitennummer"]).toBe(1);
+      expect(params["DokumenteProSeite"]).toBe("Ten");
     });
   });
 });

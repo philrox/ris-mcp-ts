@@ -53,6 +53,132 @@ const BUNDESLAND_MAPPING: Record<string, string> = {
 };
 
 /**
+ * Index categories for Gemeinden (Gr) application.
+ * Used to filter municipal law by subject area.
+ * Values from API documentation: OGD_Gemeinderecht_Request.xsd
+ */
+const GEMEINDEN_INDEX_VALUES = [
+  "Undefined",
+  "VertretungskoerperUndAllgemeineVerwaltung",
+  "OeffentlicheOrdnungUndSicherheit",
+  "UnterrichtErziehungSportUndWissenschaft",
+  "KunstKulturUndKultus",
+  "SozialeWohlfahrtUndWohnbaufoerderung",
+  "Gesundheit",
+  "StraßenUndWasserbauVerkehr",
+  "Wirtschaftsfoerderung",
+  "Dienstleistungen",
+  "Finanzwirtschaft",
+] as const;
+
+/**
+ * ImRisSeit values for time-based filtering.
+ */
+const IM_RIS_SEIT_VALUES = [
+  "EinerWoche",
+  "ZweiWochen",
+  "EinemMonat",
+  "DreiMonaten",
+  "SechsMonaten",
+  "EinemJahr",
+] as const;
+
+/**
+ * Political parties for UPTS (Parteien-Transparenz-Senat) application.
+ */
+const UPTS_PARTEIEN = [
+  "SPÖ - Sozialdemokratische Partei Österreichs",
+  "ÖVP - Österreichische Volkspartei",
+  "FPÖ - Freiheitliche Partei Österreichs",
+  "GRÜNE - Die Grünen - Die Grüne Alternative",
+  "NEOS - NEOS – Das Neue Österreich und Liberales Forum",
+  "BZÖ - Bündnis Zukunft Österreich",
+] as const;
+
+/**
+ * Federal ministries for Erlaesse (decrees) application.
+ */
+const BUNDESMINISTERIEN = [
+  "BKA (Bundeskanzleramt)",
+  "BMFFIM (Bundesministerin für Frauen, Familie, Integration und Medien im Bundeskanzleramt)",
+  "BMEUV (Bundesministerin für EU und Verfassung im Bundeskanzleramt)",
+  "BMKOES (Bundesministerium für Kunst, Kultur, öffentlichen Dienst und Sport)",
+  "BMEIA (Bundesministerium für europäische und internationale Angelegenheiten)",
+  "BMAW (Bundesministerium für Arbeit und Wirtschaft)",
+  "BMBWF (Bundesministerium für Bildung, Wissenschaft und Forschung)",
+  "BMF (Bundesministerium für Finanzen)",
+  "BMI (Bundesministerium für Inneres)",
+  "BMJ (Bundesministerium für Justiz)",
+  "BMK (Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie)",
+  "BMLV (Bundesministerium für Landesverteidigung)",
+  "BML (Bundesministerium für Land- und Forstwirtschaft, Regionen und Wasserwirtschaft)",
+  "BMSGPK (Bundesministerium für Soziales, Gesundheit, Pflege und Konsumentenschutz)",
+] as const;
+
+/**
+ * Document types for KmGer (court announcements) application.
+ */
+const KMGER_TYP_VALUES = [
+  "Konkursverfahren",
+  "Sanierungsverfahren",
+] as const;
+
+/**
+ * Document types for Avsv (social insurance announcements) application.
+ */
+const AVSV_DOKUMENTART_VALUES = [
+  "Richtlinie",
+  "Kundmachung",
+  "Verlautbarung",
+] as const;
+
+/**
+ * Authors (Urheber) for Avsv application.
+ */
+const AVSV_URHEBER_VALUES = [
+  "Dachverband der Sozialversicherungsträger",
+  "Pensionsversicherungsanstalt",
+  "Österreichische Gesundheitskasse",
+  "Allgemeine Unfallversicherungsanstalt",
+  "Sozialversicherungsanstalt der Selbständigen",
+  "Versicherungsanstalt öffentlich Bediensteter, Eisenbahnen und Bergbau",
+] as const;
+
+/**
+ * Type values for Avn (veterinary notices) application.
+ */
+const AVN_TYP_VALUES = [
+  "Kundmachung",
+  "Verordnung",
+  "Erlass",
+] as const;
+
+/**
+ * OSG (Österreichischer Strukturplan Gesundheit) types for Spg application.
+ */
+const SPG_OSG_TYP_VALUES = [
+  "ÖSG",
+  "ÖSG - Großgeräteplan",
+] as const;
+
+/**
+ * RSG (Regionaler Strukturplan Gesundheit) types for Spg application.
+ */
+const SPG_RSG_TYP_VALUES = [
+  "RSG",
+  "RSG - Großgeräteplan",
+] as const;
+
+/**
+ * PruefGewO examination types.
+ */
+const PRUEFGEWO_TYP_VALUES = [
+  "Befähigungsprüfung",
+  "Eignungsprüfung",
+  "Meisterprüfung",
+] as const;
+
+/**
  * Valid application names for the History API endpoint.
  * The History API uses "Anwendung" parameter with specific application names.
  */
@@ -1126,9 +1252,15 @@ server.tool(
 
 Use this tool to find municipal regulations and local ordinances.
 
+Applications:
+  - Gr: Municipal law (Gemeinderecht) - default
+  - GrA: Cross-border municipal law (Gemeinderecht Authentisch/Amtsblätter)
+
 Example queries:
   - gemeinde="Graz", suchworte="Parkgebuehren"
-  - bundesland="Tirol", titel="Gebuehrenordnung"`,
+  - bundesland="Tirol", titel="Gebuehrenordnung"
+  - applikation="Gr", index="Baurecht"
+  - applikation="GrA", bezirk="Bregenz"`,
   {
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in titles"),
@@ -1142,7 +1274,56 @@ Example queries:
     applikation: z
       .enum(["Gr", "GrA"])
       .default("Gr")
-      .describe('"Gr" (municipal law, default) or "GrA" (cross-border)'),
+      .describe('"Gr" (municipal law, default) or "GrA" (cross-border/Amtsblätter)'),
+    // Parameters for Gr application
+    geschaeftszahl: z
+      .string()
+      .optional()
+      .describe("File number/Aktenzeichen (Gr only)"),
+    index: z
+      .enum(GEMEINDEN_INDEX_VALUES)
+      .optional()
+      .describe(
+        "Subject area index (Gr only) - VertretungskoerperUndAllgemeineVerwaltung, OeffentlicheOrdnungUndSicherheit, UnterrichtErziehungSportUndWissenschaft, KunstKulturUndKultus, SozialeWohlfahrtUndWohnbaufoerderung, Gesundheit, StraßenUndWasserbauVerkehr, Wirtschaftsfoerderung, Dienstleistungen, Finanzwirtschaft"
+      ),
+    fassung_vom: z
+      .string()
+      .optional()
+      .describe("Historical version date (YYYY-MM-DD, Gr only)"),
+    // Parameters for GrA application
+    bezirk: z
+      .string()
+      .optional()
+      .describe('District name (GrA only, e.g., "Bregenz")'),
+    gemeindeverband: z
+      .string()
+      .optional()
+      .describe("Municipal association name (GrA only)"),
+    kundmachungsnummer: z
+      .string()
+      .optional()
+      .describe("Announcement number (GrA only)"),
+    kundmachungsdatum_von: z
+      .string()
+      .optional()
+      .describe("Announcement date from (YYYY-MM-DD, GrA only)"),
+    kundmachungsdatum_bis: z
+      .string()
+      .optional()
+      .describe("Announcement date to (YYYY-MM-DD, GrA only)"),
+    // Common parameters
+    im_ris_seit: z
+      .enum(IM_RIS_SEIT_VALUES)
+      .optional()
+      .describe("Filter by time in RIS - EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr"),
+    sortierung_richtung: z
+      .enum(["Ascending", "Descending"])
+      .optional()
+      .describe("Sort direction"),
+    sortierung_spalte_gr: z
+      .enum(["Geschaeftszahl", "Bundesland", "Gemeinde"])
+      .optional()
+      .describe("Sort column (Gr only)"),
     seite: z.number().default(1).describe("Page number (default: 1)"),
     limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
     response_format: z
@@ -1151,11 +1332,30 @@ Example queries:
       .describe('"markdown" (default) or "json"'),
   },
   async (args) => {
-    const { suchworte, titel, bundesland, gemeinde, applikation, seite, limit, response_format } =
-      args;
+    const {
+      suchworte,
+      titel,
+      bundesland,
+      gemeinde,
+      applikation,
+      geschaeftszahl,
+      index,
+      fassung_vom,
+      bezirk,
+      gemeindeverband,
+      kundmachungsnummer,
+      kundmachungsdatum_von,
+      kundmachungsdatum_bis,
+      im_ris_seit,
+      sortierung_richtung,
+      sortierung_spalte_gr,
+      seite,
+      limit,
+      response_format,
+    } = args;
 
     // Validate at least one search parameter
-    if (!suchworte && !titel && !bundesland && !gemeinde) {
+    if (!suchworte && !titel && !bundesland && !gemeinde && !geschaeftszahl && !index && !bezirk && !kundmachungsnummer) {
       return {
         content: [
           {
@@ -1165,7 +1365,11 @@ Example queries:
               "- `suchworte` fuer Volltextsuche\n" +
               "- `titel` fuer Suche in Titeln\n" +
               "- `bundesland` fuer Bundesland\n" +
-              "- `gemeinde` fuer Gemeinde",
+              "- `gemeinde` fuer Gemeinde\n" +
+              "- `geschaeftszahl` fuer Aktenzeichen (Gr)\n" +
+              "- `index` fuer Sachgebiet (Gr)\n" +
+              "- `bezirk` fuer Bezirk (GrA)\n" +
+              "- `kundmachungsnummer` fuer Kundmachungsnummer (GrA)",
           },
         ],
       };
@@ -1178,10 +1382,30 @@ Example queries:
       Seitennummer: seite,
     };
 
+    // Common parameters
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
     if (gemeinde) params["Gemeinde"] = gemeinde;
     if (bundesland) params["Bundesland"] = bundesland;
+    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
+    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
+
+    // Gr-specific parameters
+    if (applikation === "Gr") {
+      if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+      if (index) params["Index"] = index;
+      if (fassung_vom) params["FassungVom"] = fassung_vom;
+      if (sortierung_spalte_gr) params["Sortierung.SortedByColumn"] = sortierung_spalte_gr;
+    }
+
+    // GrA-specific parameters
+    if (applikation === "GrA") {
+      if (bezirk) params["Bezirk"] = bezirk;
+      if (gemeindeverband) params["Gemeindeverband"] = gemeindeverband;
+      if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
+      if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
+      if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
+    }
 
     try {
       const apiResponse = await searchGemeinden(params);
@@ -1221,10 +1445,11 @@ Available applications:
   - Erlaesse: Ministerial decrees (Erlässe der Bundesministerien)
 
 Example queries:
-  - applikation="Mrp", suchworte="Budget"
-  - applikation="Erlaesse", titel="Finanzministerium"
-  - applikation="Avn", suchworte="Tiergesundheit"
-  - applikation="Upts", suchworte="Partei"`,
+  - applikation="Mrp", suchworte="Budget", einbringer="BMF..."
+  - applikation="Erlaesse", bundesministerium="BMF (Bundesministerium für Finanzen)"
+  - applikation="Upts", partei="SPÖ - Sozialdemokratische Partei Österreichs"
+  - applikation="KmGer", kmger_typ="Konkursverfahren"
+  - applikation="Avsv", dokumentart="Richtlinie"`,
   {
     applikation: z
       .enum(["PruefGewO", "Avsv", "Spg", "Avn", "KmGer", "Upts", "Mrp", "Erlaesse"])
@@ -1235,6 +1460,111 @@ Example queries:
     titel: z.string().optional().describe("Search in titles"),
     datum_von: z.string().optional().describe("Date from (YYYY-MM-DD)"),
     datum_bis: z.string().optional().describe("Date to (YYYY-MM-DD)"),
+    // Common parameters
+    im_ris_seit: z
+      .enum(IM_RIS_SEIT_VALUES)
+      .optional()
+      .describe("Filter by time in RIS - EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr"),
+    sortierung_richtung: z
+      .enum(["Ascending", "Descending"])
+      .optional()
+      .describe("Sort direction"),
+    geschaeftszahl: z
+      .string()
+      .optional()
+      .describe("File number/Aktenzeichen (for Mrp, Upts, KmGer)"),
+    norm: z
+      .string()
+      .optional()
+      .describe("Legal norm reference (for Erlaesse, Upts)"),
+    fassung_vom: z
+      .string()
+      .optional()
+      .describe("Historical version date (YYYY-MM-DD, for Erlaesse)"),
+    // Mrp-specific parameters
+    einbringer: z
+      .string()
+      .optional()
+      .describe("Submitter (Mrp only, e.g., ministry abbreviation)"),
+    sitzungsnummer: z
+      .string()
+      .optional()
+      .describe("Session number (Mrp only)"),
+    gesetzgebungsperiode: z
+      .string()
+      .optional()
+      .describe("Legislative period (Mrp only, e.g., '27')"),
+    // Erlaesse-specific parameters
+    bundesministerium: z
+      .enum(BUNDESMINISTERIEN)
+      .optional()
+      .describe("Federal ministry (Erlaesse only)"),
+    abteilung: z
+      .string()
+      .optional()
+      .describe("Department/division (Erlaesse only)"),
+    fundstelle: z
+      .string()
+      .optional()
+      .describe("Source reference (Erlaesse only)"),
+    // Upts-specific parameters
+    partei: z
+      .enum(UPTS_PARTEIEN)
+      .optional()
+      .describe("Political party (Upts only)"),
+    // KmGer-specific parameters
+    kmger_typ: z
+      .enum(KMGER_TYP_VALUES)
+      .optional()
+      .describe("Announcement type (KmGer only) - Konkursverfahren, Sanierungsverfahren"),
+    gericht: z
+      .string()
+      .optional()
+      .describe("Court name (KmGer only)"),
+    // Avsv-specific parameters
+    dokumentart: z
+      .enum(AVSV_DOKUMENTART_VALUES)
+      .optional()
+      .describe("Document type (Avsv only) - Richtlinie, Kundmachung, Verlautbarung"),
+    urheber: z
+      .enum(AVSV_URHEBER_VALUES)
+      .optional()
+      .describe("Author/institution (Avsv only)"),
+    avsvnummer: z
+      .string()
+      .optional()
+      .describe("AVSV number (Avsv only)"),
+    // Avn-specific parameters
+    avnnummer: z
+      .string()
+      .optional()
+      .describe("AVN number (Avn only)"),
+    avn_typ: z
+      .enum(AVN_TYP_VALUES)
+      .optional()
+      .describe("Notice type (Avn only) - Kundmachung, Verordnung, Erlass"),
+    // Spg-specific parameters
+    spgnummer: z
+      .string()
+      .optional()
+      .describe("SPG number (Spg only)"),
+    osg_typ: z
+      .enum(SPG_OSG_TYP_VALUES)
+      .optional()
+      .describe("Austrian health structure plan type (Spg only) - ÖSG, ÖSG - Großgeräteplan"),
+    rsg_typ: z
+      .enum(SPG_RSG_TYP_VALUES)
+      .optional()
+      .describe("Regional health structure plan type (Spg only) - RSG, RSG - Großgeräteplan"),
+    rsg_land: z
+      .string()
+      .optional()
+      .describe("Federal state for RSG (Spg only)"),
+    // PruefGewO-specific parameters
+    pruefgewo_typ: z
+      .enum(PRUEFGEWO_TYP_VALUES)
+      .optional()
+      .describe("Examination type (PruefGewO only) - Befähigungsprüfung, Eignungsprüfung, Meisterprüfung"),
     seite: z.number().default(1).describe("Page number (default: 1)"),
     limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
     response_format: z
@@ -1243,11 +1573,71 @@ Example queries:
       .describe('"markdown" (default) or "json"'),
   },
   async (args) => {
-    const { applikation, suchworte, titel, datum_von, datum_bis, seite, limit, response_format } =
-      args;
+    const {
+      applikation,
+      suchworte,
+      titel,
+      datum_von,
+      datum_bis,
+      im_ris_seit,
+      sortierung_richtung,
+      geschaeftszahl,
+      norm,
+      fassung_vom,
+      einbringer,
+      sitzungsnummer,
+      gesetzgebungsperiode,
+      bundesministerium,
+      abteilung,
+      fundstelle,
+      partei,
+      kmger_typ,
+      gericht,
+      dokumentart,
+      urheber,
+      avsvnummer,
+      avnnummer,
+      avn_typ,
+      spgnummer,
+      osg_typ,
+      rsg_typ,
+      rsg_land,
+      pruefgewo_typ,
+      seite,
+      limit,
+      response_format,
+    } = args;
 
     // Validate at least one search parameter beyond applikation
-    if (!suchworte && !titel) {
+    const hasSearchParam =
+      suchworte ||
+      titel ||
+      geschaeftszahl ||
+      norm ||
+      einbringer ||
+      sitzungsnummer ||
+      gesetzgebungsperiode ||
+      bundesministerium ||
+      abteilung ||
+      fundstelle ||
+      partei ||
+      kmger_typ ||
+      gericht ||
+      dokumentart ||
+      urheber ||
+      avsvnummer ||
+      avnnummer ||
+      avn_typ ||
+      spgnummer ||
+      osg_typ ||
+      rsg_typ ||
+      rsg_land ||
+      pruefgewo_typ ||
+      im_ris_seit ||
+      datum_von ||
+      datum_bis;
+
+    if (!hasSearchParam) {
       return {
         content: [
           {
@@ -1255,7 +1645,8 @@ Example queries:
             text:
               "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
               "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Titeln",
+              "- `titel` fuer Suche in Titeln\n" +
+              "- oder applikationsspezifische Parameter (siehe Tool-Beschreibung)",
           },
         ],
       };
@@ -1268,8 +1659,11 @@ Example queries:
       Seitennummer: seite,
     };
 
+    // Common parameters
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
+    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
+    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
 
     // Build date parameters based on application type
     if (datum_von || datum_bis) {
@@ -1298,6 +1692,51 @@ Example queries:
           if (datum_bis) params["Kundmachung.Bis"] = datum_bis;
           break;
       }
+    }
+
+    // Application-specific parameters
+    switch (applikation) {
+      case "Mrp":
+        if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+        if (einbringer) params["Einbringer"] = einbringer;
+        if (sitzungsnummer) params["Sitzungsnummer"] = sitzungsnummer;
+        if (gesetzgebungsperiode) params["Gesetzgebungsperiode"] = gesetzgebungsperiode;
+        break;
+      case "Erlaesse":
+        if (norm) params["Norm"] = norm;
+        if (fassung_vom) params["FassungVom"] = fassung_vom;
+        if (bundesministerium) params["Bundesministerium"] = bundesministerium;
+        if (abteilung) params["Abteilung"] = abteilung;
+        if (fundstelle) params["Fundstelle"] = fundstelle;
+        break;
+      case "Upts":
+        if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+        if (norm) params["Norm"] = norm;
+        if (partei) params["Partei"] = partei;
+        break;
+      case "KmGer":
+        if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+        if (kmger_typ) params["Typ"] = kmger_typ;
+        if (gericht) params["Gericht"] = gericht;
+        break;
+      case "Avsv":
+        if (dokumentart) params["Dokumentart"] = dokumentart;
+        if (urheber) params["Urheber"] = urheber;
+        if (avsvnummer) params["Avsvnummer"] = avsvnummer;
+        break;
+      case "Avn":
+        if (avnnummer) params["Avnnummer"] = avnnummer;
+        if (avn_typ) params["Typ"] = avn_typ;
+        break;
+      case "Spg":
+        if (spgnummer) params["Spgnummer"] = spgnummer;
+        if (osg_typ) params["OsgTyp"] = osg_typ;
+        if (rsg_typ) params["RsgTyp"] = rsg_typ;
+        if (rsg_land) params["RsgLand"] = rsg_land;
+        break;
+      case "PruefGewO":
+        if (pruefgewo_typ) params["Typ"] = pruefgewo_typ;
+        break;
     }
 
     try {
@@ -1411,6 +1850,22 @@ Example queries:
 // Tool 12: ris_verordnungen
 // =============================================================================
 
+/**
+ * Valid Bundesland values for Vbl (Verordnungsblätter) API.
+ * Note: Vbl uses direct Bundesland values, NOT the SucheIn format used by Lgbl.
+ */
+const VALID_VBL_BUNDESLAENDER = [
+  "Burgenland",
+  "Kaernten",
+  "Niederoesterreich",
+  "Oberoesterreich",
+  "Salzburg",
+  "Steiermark",
+  "Tirol",
+  "Vorarlberg",
+  "Wien",
+] as const;
+
 server.tool(
   "ris_verordnungen",
   `Search Austrian state ordinance gazettes (Verordnungsblaetter der Laender).
@@ -1420,10 +1875,19 @@ NOTE: Currently only Tirol data is available (since January 1, 2022).
 Other federal states have not yet published their ordinance gazettes in RIS.
 
 Example queries:
-  - suchworte="Wolf" -> Full-text search (also searches titles)
+  - suchworte="Wolf" -> Full-text search
+  - titel="Verordnung" -> Search in title
+  - bundesland="Tirol" -> Filter by state (currently only Tirol has data)
+  - kundmachungsnummer="25" -> Search by publication number
   - kundmachungsdatum_von="2024-01-01", kundmachungsdatum_bis="2024-12-31" -> Date range`,
   {
-    suchworte: z.string().optional().describe("Full-text search terms (searches all text including titles)"),
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in title"),
+    bundesland: z
+      .enum(VALID_VBL_BUNDESLAENDER)
+      .optional()
+      .describe("Filter by state (currently only Tirol has data)"),
+    kundmachungsnummer: z.string().optional().describe("Publication number"),
     kundmachungsdatum_von: z.string().optional().describe("Publication date from (YYYY-MM-DD)"),
     kundmachungsdatum_bis: z.string().optional().describe("Publication date to (YYYY-MM-DD)"),
     seite: z.number().default(1).describe("Page number (default: 1)"),
@@ -1434,11 +1898,20 @@ Example queries:
       .describe('"markdown" (default) or "json"'),
   },
   async (args) => {
-    const { suchworte, kundmachungsdatum_von, kundmachungsdatum_bis, seite, limit, response_format } =
-      args;
+    const {
+      suchworte,
+      titel,
+      bundesland,
+      kundmachungsnummer,
+      kundmachungsdatum_von,
+      kundmachungsdatum_bis,
+      seite,
+      limit,
+      response_format,
+    } = args;
 
     // Validate at least one search parameter
-    if (!suchworte && !kundmachungsdatum_von) {
+    if (!suchworte && !titel && !bundesland && !kundmachungsnummer && !kundmachungsdatum_von) {
       return {
         content: [
           {
@@ -1446,6 +1919,9 @@ Example queries:
             text:
               "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
               "- `suchworte` fuer Volltextsuche\n" +
+              "- `titel` fuer Titelsuche\n" +
+              "- `bundesland` fuer Bundesland-Filter\n" +
+              "- `kundmachungsnummer` fuer Verordnungsnummer\n" +
               "- `kundmachungsdatum_von` fuer Datum ab",
           },
         ],
@@ -1454,6 +1930,7 @@ Example queries:
 
     // Build API parameters
     // Uses Landesrecht endpoint with Applikation="Vbl"
+    // Note: Vbl uses direct Bundesland values, NOT the SucheIn format used by Lgbl
     const params: Record<string, unknown> = {
       Applikation: "Vbl",
       DokumenteProSeite: limitToDokumenteProSeite(limit),
@@ -1461,6 +1938,9 @@ Example queries:
     };
 
     if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (bundesland) params["Bundesland"] = bundesland;
+    if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
     if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
     if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
 
