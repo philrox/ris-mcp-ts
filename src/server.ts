@@ -15,7 +15,9 @@ import {
   RISAPIError,
   RISParsingError,
   RISTimeoutError,
+  searchBezirke,
   searchBundesrecht,
+  searchGemeinden,
   searchJudikatur,
   searchLandesrecht,
 } from "./client.js";
@@ -853,6 +855,197 @@ Note: For long documents, content may be truncated. Use specific searches to nar
 
       // Format the document
       const formatted = formatDocument(htmlContent, metadata, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 8: ris_bezirke
+// =============================================================================
+
+server.tool(
+  "ris_bezirke",
+  `Search Austrian district administrative authority decisions (Bezirksverwaltungsbehörden).
+
+Use this tool to find administrative decisions from district authorities.
+
+Example queries:
+  - bundesland="Wien", suchworte="Baubewilligung"
+  - bezirk="Innsbruck", geschaeftszahl="12345/2023"`,
+  {
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    bundesland: z
+      .string()
+      .optional()
+      .describe(
+        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+      ),
+    bezirk: z.string().optional().describe('District name (e.g., "Innsbruck")'),
+    geschaeftszahl: z.string().optional().describe("Case number"),
+    entscheidungsdatum_von: z.string().optional().describe("Decision date from (YYYY-MM-DD)"),
+    entscheidungsdatum_bis: z.string().optional().describe("Decision date to (YYYY-MM-DD)"),
+    norm: z.string().optional().describe('Search by legal norm (e.g., "Bauordnung")'),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const {
+      suchworte,
+      bundesland,
+      bezirk,
+      geschaeftszahl,
+      entscheidungsdatum_von,
+      entscheidungsdatum_bis,
+      norm,
+      seite,
+      limit,
+      response_format,
+    } = args;
+
+    // Validate at least one search parameter
+    if (!suchworte && !bundesland && !bezirk && !geschaeftszahl && !norm) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
+              "- `suchworte` fuer Volltextsuche\n" +
+              "- `bundesland` fuer Bundesland\n" +
+              "- `bezirk` fuer Bezirk\n" +
+              "- `geschaeftszahl` fuer Geschaeftszahl\n" +
+              "- `norm` fuer Rechtsnorm",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    const params: Record<string, unknown> = {
+      Applikation: "Bvb",
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (bezirk) params["Bezirk"] = bezirk;
+    if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+    if (norm) params["Norm"] = norm;
+    if (entscheidungsdatum_von) params["EntscheidungsdatumVon"] = entscheidungsdatum_von;
+    if (entscheidungsdatum_bis) params["EntscheidungsdatumBis"] = entscheidungsdatum_bis;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    try {
+      const apiResponse = await searchBezirke(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
+      const result = truncateResponse(formatted);
+
+      return {
+        content: [{ type: "text" as const, text: result }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
+      };
+    }
+  }
+);
+
+// =============================================================================
+// Tool 9: ris_gemeinden
+// =============================================================================
+
+server.tool(
+  "ris_gemeinden",
+  `Search Austrian municipal law (Gemeinderecht).
+
+Use this tool to find municipal regulations and local ordinances.
+
+Example queries:
+  - gemeinde="Graz", suchworte="Parkgebuehren"
+  - bundesland="Tirol", titel="Gebuehrenordnung"`,
+  {
+    suchworte: z.string().optional().describe("Full-text search terms"),
+    titel: z.string().optional().describe("Search in titles"),
+    bundesland: z
+      .string()
+      .optional()
+      .describe(
+        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+      ),
+    gemeinde: z.string().optional().describe('Municipality name (e.g., "Graz")'),
+    applikation: z
+      .enum(["Gr", "GrA"])
+      .default("Gr")
+      .describe('"Gr" (municipal law, default) or "GrA" (cross-border)'),
+    seite: z.number().default(1).describe("Page number (default: 1)"),
+    limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
+    response_format: z
+      .enum(["markdown", "json"])
+      .default("markdown")
+      .describe('"markdown" (default) or "json"'),
+  },
+  async (args) => {
+    const { suchworte, titel, bundesland, gemeinde, applikation, seite, limit, response_format } =
+      args;
+
+    // Validate at least one search parameter
+    if (!suchworte && !titel && !bundesland && !gemeinde) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
+              "- `suchworte` fuer Volltextsuche\n" +
+              "- `titel` fuer Suche in Titeln\n" +
+              "- `bundesland` fuer Bundesland\n" +
+              "- `gemeinde` fuer Gemeinde",
+          },
+        ],
+      };
+    }
+
+    // Build API parameters
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (gemeinde) params["Gemeinde"] = gemeinde;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    try {
+      const apiResponse = await searchGemeinden(params);
+      const searchResult = parseSearchResults(apiResponse);
+      const formatted = formatSearchResults(searchResult, response_format);
       const result = truncateResponse(formatted);
 
       return {

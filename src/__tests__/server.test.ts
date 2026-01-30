@@ -1084,4 +1084,395 @@ describe("Parameter validation patterns for new tools", () => {
       expect(hasRequiredEmpty).toBeFalsy();
     });
   });
+
+  describe("Bezirke search requirements", () => {
+    it("should require at least one of: suchworte, bundesland, bezirk, geschaeftszahl, norm", () => {
+      const params1 = { suchworte: "test" };
+      const params2 = { bundesland: "Wien" };
+      const params3 = { bezirk: "Innsbruck" };
+      const params4 = { geschaeftszahl: "12345/2023" };
+      const params5 = { norm: "Bauordnung" };
+      const emptyParams = {};
+
+      const hasRequired1 =
+        params1.suchworte ||
+        (params1 as { bundesland?: string }).bundesland ||
+        (params1 as { bezirk?: string }).bezirk ||
+        (params1 as { geschaeftszahl?: string }).geschaeftszahl ||
+        (params1 as { norm?: string }).norm;
+      const hasRequired2 =
+        (params2 as { suchworte?: string }).suchworte ||
+        params2.bundesland ||
+        (params2 as { bezirk?: string }).bezirk ||
+        (params2 as { geschaeftszahl?: string }).geschaeftszahl ||
+        (params2 as { norm?: string }).norm;
+      const hasRequired3 =
+        (params3 as { suchworte?: string }).suchworte ||
+        (params3 as { bundesland?: string }).bundesland ||
+        params3.bezirk ||
+        (params3 as { geschaeftszahl?: string }).geschaeftszahl ||
+        (params3 as { norm?: string }).norm;
+      const hasRequired4 =
+        (params4 as { suchworte?: string }).suchworte ||
+        (params4 as { bundesland?: string }).bundesland ||
+        (params4 as { bezirk?: string }).bezirk ||
+        params4.geschaeftszahl ||
+        (params4 as { norm?: string }).norm;
+      const hasRequired5 =
+        (params5 as { suchworte?: string }).suchworte ||
+        (params5 as { bundesland?: string }).bundesland ||
+        (params5 as { bezirk?: string }).bezirk ||
+        (params5 as { geschaeftszahl?: string }).geschaeftszahl ||
+        params5.norm;
+      const hasRequiredEmpty =
+        (emptyParams as { suchworte?: string }).suchworte ||
+        (emptyParams as { bundesland?: string }).bundesland ||
+        (emptyParams as { bezirk?: string }).bezirk ||
+        (emptyParams as { geschaeftszahl?: string }).geschaeftszahl ||
+        (emptyParams as { norm?: string }).norm;
+
+      expect(hasRequired1).toBeTruthy();
+      expect(hasRequired2).toBeTruthy();
+      expect(hasRequired3).toBeTruthy();
+      expect(hasRequired4).toBeTruthy();
+      expect(hasRequired5).toBeTruthy();
+      expect(hasRequiredEmpty).toBeFalsy();
+    });
+  });
+
+  describe("Gemeinden search requirements", () => {
+    it("should require at least one of: suchworte, titel, bundesland, gemeinde", () => {
+      const params1 = { suchworte: "test" };
+      const params2 = { titel: "Verordnung" };
+      const params3 = { bundesland: "Steiermark" };
+      const params4 = { gemeinde: "Graz" };
+      const emptyParams = {};
+
+      const hasRequired1 =
+        params1.suchworte ||
+        (params1 as { titel?: string }).titel ||
+        (params1 as { bundesland?: string }).bundesland ||
+        (params1 as { gemeinde?: string }).gemeinde;
+      const hasRequired2 =
+        (params2 as { suchworte?: string }).suchworte ||
+        params2.titel ||
+        (params2 as { bundesland?: string }).bundesland ||
+        (params2 as { gemeinde?: string }).gemeinde;
+      const hasRequired3 =
+        (params3 as { suchworte?: string }).suchworte ||
+        (params3 as { titel?: string }).titel ||
+        params3.bundesland ||
+        (params3 as { gemeinde?: string }).gemeinde;
+      const hasRequired4 =
+        (params4 as { suchworte?: string }).suchworte ||
+        (params4 as { titel?: string }).titel ||
+        (params4 as { bundesland?: string }).bundesland ||
+        params4.gemeinde;
+      const hasRequiredEmpty =
+        (emptyParams as { suchworte?: string }).suchworte ||
+        (emptyParams as { titel?: string }).titel ||
+        (emptyParams as { bundesland?: string }).bundesland ||
+        (emptyParams as { gemeinde?: string }).gemeinde;
+
+      expect(hasRequired1).toBeTruthy();
+      expect(hasRequired2).toBeTruthy();
+      expect(hasRequired3).toBeTruthy();
+      expect(hasRequired4).toBeTruthy();
+      expect(hasRequiredEmpty).toBeFalsy();
+    });
+  });
+});
+
+// =============================================================================
+// Bezirke API Parameter Mapping Tests
+// =============================================================================
+
+describe("Bezirke API parameter mapping", () => {
+  // Bundesland mapping constant (mirrors server.ts)
+  const BUNDESLAND_MAPPING: Record<string, string> = {
+    Wien: "SucheInWien",
+    Niederoesterreich: "SucheInNiederoesterreich",
+    Oberoesterreich: "SucheInOberoesterreich",
+    Salzburg: "SucheInSalzburg",
+    Tirol: "SucheInTirol",
+    Vorarlberg: "SucheInVorarlberg",
+    Kaernten: "SucheInKaernten",
+    Steiermark: "SucheInSteiermark",
+    Burgenland: "SucheInBurgenland",
+  };
+
+  // Re-implement the mapping logic for testing
+  function buildBezirkeParams(args: {
+    suchworte?: string;
+    bundesland?: string;
+    bezirk?: string;
+    geschaeftszahl?: string;
+    entscheidungsdatum_von?: string;
+    entscheidungsdatum_bis?: string;
+    norm?: string;
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const {
+      suchworte,
+      bundesland,
+      bezirk,
+      geschaeftszahl,
+      entscheidungsdatum_von,
+      entscheidungsdatum_bis,
+      norm,
+      seite = 1,
+      limit = 20,
+    } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: "Bvb",
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (bezirk) params["Bezirk"] = bezirk;
+    if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
+    if (norm) params["Norm"] = norm;
+    if (entscheidungsdatum_von) params["EntscheidungsdatumVon"] = entscheidungsdatum_von;
+    if (entscheidungsdatum_bis) params["EntscheidungsdatumBis"] = entscheidungsdatum_bis;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    return params;
+  }
+
+  describe("fixed applikation", () => {
+    it("should always set Applikation to 'Bvb'", () => {
+      const params = buildBezirkeParams({ suchworte: "Test" });
+
+      expect(params["Applikation"]).toBe("Bvb");
+    });
+  });
+
+  describe("bezirk parameter", () => {
+    it("should map bezirk to 'Bezirk' API parameter", () => {
+      const params = buildBezirkeParams({ bezirk: "Innsbruck" });
+
+      expect(params["Bezirk"]).toBe("Innsbruck");
+    });
+
+    it("should not include Bezirk when bezirk is not provided", () => {
+      const params = buildBezirkeParams({ suchworte: "Test" });
+
+      expect(params["Bezirk"]).toBeUndefined();
+    });
+  });
+
+  describe("geschaeftszahl parameter", () => {
+    it("should map geschaeftszahl to 'Geschaeftszahl' API parameter", () => {
+      const params = buildBezirkeParams({ geschaeftszahl: "12345/2023" });
+
+      expect(params["Geschaeftszahl"]).toBe("12345/2023");
+    });
+  });
+
+  describe("norm parameter", () => {
+    it("should map norm to 'Norm' API parameter", () => {
+      const params = buildBezirkeParams({ norm: "Bauordnung" });
+
+      expect(params["Norm"]).toBe("Bauordnung");
+    });
+  });
+
+  describe("date parameters", () => {
+    it("should map entscheidungsdatum_von to 'EntscheidungsdatumVon'", () => {
+      const params = buildBezirkeParams({ suchworte: "test", entscheidungsdatum_von: "2023-01-01" });
+
+      expect(params["EntscheidungsdatumVon"]).toBe("2023-01-01");
+    });
+
+    it("should map entscheidungsdatum_bis to 'EntscheidungsdatumBis'", () => {
+      const params = buildBezirkeParams({ suchworte: "test", entscheidungsdatum_bis: "2023-12-31" });
+
+      expect(params["EntscheidungsdatumBis"]).toBe("2023-12-31");
+    });
+  });
+
+  describe("bundesland parameter", () => {
+    it("should map Wien to Bundesland.SucheInWien=true", () => {
+      const params = buildBezirkeParams({ bundesland: "Wien" });
+
+      expect(params["Bundesland.SucheInWien"]).toBe("true");
+    });
+
+    it("should map all 9 Bundeslaender correctly", () => {
+      const bundeslaender = Object.keys(BUNDESLAND_MAPPING);
+      for (const bl of bundeslaender) {
+        const params = buildBezirkeParams({ bundesland: bl });
+        expect(params[`Bundesland.${BUNDESLAND_MAPPING[bl]}`]).toBe("true");
+      }
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildBezirkeParams({
+        suchworte: "Baubewilligung",
+        bundesland: "Tirol",
+        bezirk: "Innsbruck",
+        geschaeftszahl: "12345/2023",
+        norm: "Bauordnung",
+        entscheidungsdatum_von: "2023-01-01",
+        entscheidungsdatum_bis: "2023-12-31",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Applikation"]).toBe("Bvb");
+      expect(params["Suchworte"]).toBe("Baubewilligung");
+      expect(params["Bundesland.SucheInTirol"]).toBe("true");
+      expect(params["Bezirk"]).toBe("Innsbruck");
+      expect(params["Geschaeftszahl"]).toBe("12345/2023");
+      expect(params["Norm"]).toBe("Bauordnung");
+      expect(params["EntscheidungsdatumVon"]).toBe("2023-01-01");
+      expect(params["EntscheidungsdatumBis"]).toBe("2023-12-31");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
+});
+
+// =============================================================================
+// Gemeinden API Parameter Mapping Tests
+// =============================================================================
+
+describe("Gemeinden API parameter mapping", () => {
+  // Bundesland mapping constant (mirrors server.ts)
+  const BUNDESLAND_MAPPING: Record<string, string> = {
+    Wien: "SucheInWien",
+    Niederoesterreich: "SucheInNiederoesterreich",
+    Oberoesterreich: "SucheInOberoesterreich",
+    Salzburg: "SucheInSalzburg",
+    Tirol: "SucheInTirol",
+    Vorarlberg: "SucheInVorarlberg",
+    Kaernten: "SucheInKaernten",
+    Steiermark: "SucheInSteiermark",
+    Burgenland: "SucheInBurgenland",
+  };
+
+  // Re-implement the mapping logic for testing
+  function buildGemeindenParams(args: {
+    suchworte?: string;
+    titel?: string;
+    bundesland?: string;
+    gemeinde?: string;
+    applikation?: "Gr" | "GrA";
+    seite?: number;
+    limit?: number;
+  }): Record<string, unknown> {
+    const { suchworte, titel, bundesland, gemeinde, applikation = "Gr", seite = 1, limit = 20 } = args;
+
+    const limitToDokumenteProSeite = (l: number): string => {
+      const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
+      return mapping[l] ?? "Twenty";
+    };
+
+    const params: Record<string, unknown> = {
+      Applikation: applikation,
+      DokumenteProSeite: limitToDokumenteProSeite(limit),
+      Seitennummer: seite,
+    };
+
+    if (suchworte) params["Suchworte"] = suchworte;
+    if (titel) params["Titel"] = titel;
+    if (gemeinde) params["Gemeinde"] = gemeinde;
+    if (bundesland) {
+      const apiKey = BUNDESLAND_MAPPING[bundesland];
+      if (apiKey) {
+        params[`Bundesland.${apiKey}`] = "true";
+      }
+    }
+
+    return params;
+  }
+
+  describe("applikation parameter", () => {
+    it("should default to 'Gr'", () => {
+      const params = buildGemeindenParams({ suchworte: "Test" });
+
+      expect(params["Applikation"]).toBe("Gr");
+    });
+
+    it("should allow 'GrA' for cross-border municipal law", () => {
+      const params = buildGemeindenParams({ suchworte: "Test", applikation: "GrA" });
+
+      expect(params["Applikation"]).toBe("GrA");
+    });
+  });
+
+  describe("gemeinde parameter", () => {
+    it("should map gemeinde to 'Gemeinde' API parameter", () => {
+      const params = buildGemeindenParams({ gemeinde: "Graz" });
+
+      expect(params["Gemeinde"]).toBe("Graz");
+    });
+
+    it("should not include Gemeinde when gemeinde is not provided", () => {
+      const params = buildGemeindenParams({ suchworte: "Test" });
+
+      expect(params["Gemeinde"]).toBeUndefined();
+    });
+  });
+
+  describe("titel parameter", () => {
+    it("should map titel to 'Titel' API parameter", () => {
+      const params = buildGemeindenParams({ titel: "Gebuehrenordnung" });
+
+      expect(params["Titel"]).toBe("Gebuehrenordnung");
+    });
+  });
+
+  describe("bundesland parameter", () => {
+    it("should map Steiermark to Bundesland.SucheInSteiermark=true", () => {
+      const params = buildGemeindenParams({ bundesland: "Steiermark" });
+
+      expect(params["Bundesland.SucheInSteiermark"]).toBe("true");
+    });
+
+    it("should map all 9 Bundeslaender correctly", () => {
+      const bundeslaender = Object.keys(BUNDESLAND_MAPPING);
+      for (const bl of bundeslaender) {
+        const params = buildGemeindenParams({ bundesland: bl });
+        expect(params[`Bundesland.${BUNDESLAND_MAPPING[bl]}`]).toBe("true");
+      }
+    });
+  });
+
+  describe("combined parameters", () => {
+    it("should correctly map all parameters together", () => {
+      const params = buildGemeindenParams({
+        suchworte: "Parkgebuehren",
+        titel: "Gebuehrenordnung",
+        bundesland: "Steiermark",
+        gemeinde: "Graz",
+        applikation: "Gr",
+        seite: 2,
+        limit: 50,
+      });
+
+      expect(params["Applikation"]).toBe("Gr");
+      expect(params["Suchworte"]).toBe("Parkgebuehren");
+      expect(params["Titel"]).toBe("Gebuehrenordnung");
+      expect(params["Bundesland.SucheInSteiermark"]).toBe("true");
+      expect(params["Gemeinde"]).toBe("Graz");
+      expect(params["Seitennummer"]).toBe(2);
+      expect(params["DokumenteProSeite"]).toBe("Fifty");
+    });
+  });
 });

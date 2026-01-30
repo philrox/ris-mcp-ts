@@ -13,6 +13,8 @@ import {
   searchBundesrecht,
   searchLandesrecht,
   searchJudikatur,
+  searchBezirke,
+  searchGemeinden,
   getDocumentContent,
   constructDocumentUrl,
   getDocumentByNumber,
@@ -431,6 +433,128 @@ describe("searchJudikatur", () => {
     expect(result.hits).toBe(5);
     expect(result.page_number).toBe(2);
     expect(result.page_size).toBe(10);
+    expect(result.documents).toHaveLength(1);
+  });
+});
+
+describe("searchBezirke", () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("should call Bezirke endpoint", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            OgdSearchResult: { OgdDocumentResults: { Hits: 0 } },
+          })
+        ),
+    });
+
+    await searchBezirke({ Suchworte: "test" });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("Bezirke"),
+      expect.any(Object)
+    );
+  });
+
+  it("should return normalized results", async () => {
+    const mockDoc = { Data: { Metadaten: { Technisch: { ID: "BVB_2024000001" } } } };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            OgdSearchResult: {
+              OgdDocumentResults: {
+                Hits: {
+                  "#text": "3",
+                  "@pageNumber": "1",
+                  "@pageSize": "20",
+                },
+                OgdDocumentReference: [mockDoc],
+              },
+            },
+          })
+        ),
+    });
+
+    const result = await searchBezirke({ Suchworte: "Baubewilligung" });
+
+    expect(result.hits).toBe(3);
+    expect(result.page_number).toBe(1);
+    expect(result.page_size).toBe(20);
+    expect(result.documents).toHaveLength(1);
+  });
+});
+
+describe("searchGemeinden", () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("should call Gemeinden endpoint", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            OgdSearchResult: { OgdDocumentResults: { Hits: 0 } },
+          })
+        ),
+    });
+
+    await searchGemeinden({ Suchworte: "test" });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("Gemeinden"),
+      expect.any(Object)
+    );
+  });
+
+  it("should return normalized results", async () => {
+    const mockDoc = { Data: { Metadaten: { Technisch: { ID: "GR_2024000001" } } } };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            OgdSearchResult: {
+              OgdDocumentResults: {
+                Hits: {
+                  "#text": "7",
+                  "@pageNumber": "1",
+                  "@pageSize": "20",
+                },
+                OgdDocumentReference: [mockDoc],
+              },
+            },
+          })
+        ),
+    });
+
+    const result = await searchGemeinden({ Gemeinde: "Graz" });
+
+    expect(result.hits).toBe(7);
+    expect(result.page_number).toBe(1);
+    expect(result.page_size).toBe(20);
     expect(result.documents).toHaveLength(1);
   });
 });

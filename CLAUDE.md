@@ -59,7 +59,12 @@ src/
 - **ris_bundesrecht** - Search Austrian federal laws
 - **ris_landesrecht** - Search Austrian state/provincial laws
 - **ris_judikatur** - Search Austrian court decisions
+- **ris_bundesgesetzblatt** - Search Federal Law Gazettes
+- **ris_landesgesetzblatt** - Search State Law Gazettes
+- **ris_regierungsvorlagen** - Search Government Bills
 - **ris_dokument** - Retrieve full text of legal documents
+- **ris_bezirke** - Search district administrative authority decisions
+- **ris_gemeinden** - Search municipal law
 
 ## Documentation
 

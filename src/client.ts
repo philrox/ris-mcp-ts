@@ -213,6 +213,26 @@ export async function searchJudikatur(
 }
 
 /**
+ * Search district administrative authorities (Bezirke).
+ */
+export async function searchBezirke(
+  params: Record<string, unknown>,
+  timeout = DEFAULT_TIMEOUT
+): Promise<NormalizedSearchResults> {
+  return request("Bezirke", params, timeout);
+}
+
+/**
+ * Search municipal law (Gemeinden).
+ */
+export async function searchGemeinden(
+  params: Record<string, unknown>,
+  timeout = DEFAULT_TIMEOUT
+): Promise<NormalizedSearchResults> {
+  return request("Gemeinden", params, timeout);
+}
+
+/**
  * Fetch HTML content from a document URL.
  */
 export async function getDocumentContent(
