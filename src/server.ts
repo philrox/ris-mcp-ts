@@ -1357,11 +1357,13 @@ server.tool(
   `Search Austrian state ordinance gazettes (Verordnungsblaetter der Laender).
 
 Use this tool to find official publications of state/provincial ordinances.
-Covers ordinance gazettes (Verordnungsblaetter) from all 9 federal states.
+NOTE: Currently only Tirol data is available (since January 1, 2022).
+Other federal states have not yet published their ordinance gazettes in RIS.
 
 Example queries:
-  - bundesland="Tirol", suchworte="Parkordnung"
-  - vblnummer="25", jahrgang="2023", bundesland="Wien"`,
+  - suchworte="Parkordnung"
+  - vblnummer="25", jahrgang="2023"
+  - titel="Aufenthaltsabgabe"`,
   {
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in gazette titles"),
@@ -1369,7 +1371,7 @@ Example queries:
       .string()
       .optional()
       .describe(
-        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+        "Filter by state (currently only Tirol data available) - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
       ),
     vblnummer: z.string().optional().describe('Ordinance gazette number (e.g., "25")'),
     jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
