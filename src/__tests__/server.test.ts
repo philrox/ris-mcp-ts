@@ -870,14 +870,29 @@ describe("Landesgesetzblatt API parameter mapping", () => {
 describe("Regierungsvorlagen API parameter mapping", () => {
   // Re-implement the mapping logic for testing
   function buildRegierungsvorlagenParams(args: {
-    nummer?: string;
-    gesetzgebungsperiode?: string;
     suchworte?: string;
     titel?: string;
+    beschlussdatum_von?: string;
+    beschlussdatum_bis?: string;
+    einbringende_stelle?: string;
+    im_ris_seit?: string;
+    sortierung_richtung?: string;
+    sortierung_spalte?: string;
     seite?: number;
     limit?: number;
   }): Record<string, unknown> {
-    const { nummer, gesetzgebungsperiode, suchworte, titel, seite = 1, limit = 20 } = args;
+    const {
+      suchworte,
+      titel,
+      beschlussdatum_von,
+      beschlussdatum_bis,
+      einbringende_stelle,
+      im_ris_seit,
+      sortierung_richtung,
+      sortierung_spalte,
+      seite = 1,
+      limit = 20,
+    } = args;
 
     const limitToDokumenteProSeite = (l: number): string => {
       const mapping: Record<number, string> = { 10: "Ten", 20: "Twenty", 50: "Fifty", 100: "OneHundred" };
@@ -890,10 +905,14 @@ describe("Regierungsvorlagen API parameter mapping", () => {
       Seitennummer: seite,
     };
 
-    if (nummer) params["Nummer"] = nummer;
-    if (gesetzgebungsperiode) params["Gesetzgebungsperiode"] = gesetzgebungsperiode;
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
+    if (beschlussdatum_von) params["BeschlussdatumVon"] = beschlussdatum_von;
+    if (beschlussdatum_bis) params["BeschlussdatumBis"] = beschlussdatum_bis;
+    if (einbringende_stelle) params["EinbringendeStelle"] = einbringende_stelle;
+    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
+    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
+    if (sortierung_spalte) params["Sortierung.SortedByColumn"] = sortierung_spalte;
 
     return params;
   }
@@ -906,51 +925,88 @@ describe("Regierungsvorlagen API parameter mapping", () => {
     });
   });
 
-  describe("nummer parameter", () => {
-    it("should map nummer to 'Nummer' API parameter", () => {
-      const params = buildRegierungsvorlagenParams({ nummer: "123" });
+  describe("date parameters", () => {
+    it("should map beschlussdatum_von to 'BeschlussdatumVon' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({ beschlussdatum_von: "2024-01-01" });
 
-      expect(params["Nummer"]).toBe("123");
+      expect(params["BeschlussdatumVon"]).toBe("2024-01-01");
     });
 
-    it("should not include Nummer when nummer is not provided", () => {
-      const params = buildRegierungsvorlagenParams({ suchworte: "Test" });
+    it("should map beschlussdatum_bis to 'BeschlussdatumBis' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({ beschlussdatum_bis: "2024-12-31" });
 
-      expect(params["Nummer"]).toBeUndefined();
+      expect(params["BeschlussdatumBis"]).toBe("2024-12-31");
+    });
+
+    it("should handle date range", () => {
+      const params = buildRegierungsvorlagenParams({
+        beschlussdatum_von: "2024-01-01",
+        beschlussdatum_bis: "2024-06-30",
+      });
+
+      expect(params["BeschlussdatumVon"]).toBe("2024-01-01");
+      expect(params["BeschlussdatumBis"]).toBe("2024-06-30");
     });
   });
 
-  describe("gesetzgebungsperiode parameter", () => {
-    it("should map gesetzgebungsperiode to 'Gesetzgebungsperiode' API parameter", () => {
-      const params = buildRegierungsvorlagenParams({ gesetzgebungsperiode: "27" });
+  describe("einbringende_stelle parameter", () => {
+    it("should map einbringende_stelle to 'EinbringendeStelle' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({
+        einbringende_stelle: "BMF (Bundesministerium für Finanzen)",
+      });
 
-      expect(params["Gesetzgebungsperiode"]).toBe("27");
+      expect(params["EinbringendeStelle"]).toBe("BMF (Bundesministerium für Finanzen)");
+    });
+  });
+
+  describe("im_ris_seit parameter", () => {
+    it("should map im_ris_seit to 'ImRisSeit' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({ im_ris_seit: "EinemMonat" });
+
+      expect(params["ImRisSeit"]).toBe("EinemMonat");
+    });
+  });
+
+  describe("sorting parameters", () => {
+    it("should map sortierung_richtung to 'Sortierung.SortDirection' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({ sortierung_richtung: "Descending" });
+
+      expect(params["Sortierung.SortDirection"]).toBe("Descending");
     });
 
-    it("should handle Roman numeral periods as strings", () => {
-      const params = buildRegierungsvorlagenParams({ gesetzgebungsperiode: "27", nummer: "100" });
+    it("should map sortierung_spalte to 'Sortierung.SortedByColumn' API parameter", () => {
+      const params = buildRegierungsvorlagenParams({ sortierung_spalte: "Beschlussdatum" });
 
-      expect(params["Gesetzgebungsperiode"]).toBe("27");
-      expect(params["Nummer"]).toBe("100");
+      expect(params["Sortierung.SortedByColumn"]).toBe("Beschlussdatum");
     });
   });
 
   describe("combined parameters", () => {
     it("should correctly map all parameters together", () => {
       const params = buildRegierungsvorlagenParams({
-        nummer: "123",
-        gesetzgebungsperiode: "27",
         suchworte: "Klimaschutz",
         titel: "Klimaschutzgesetz",
+        beschlussdatum_von: "2024-01-01",
+        beschlussdatum_bis: "2024-12-31",
+        einbringende_stelle: "BMK (Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie)",
+        im_ris_seit: "EinemJahr",
+        sortierung_richtung: "Descending",
+        sortierung_spalte: "Beschlussdatum",
         seite: 2,
         limit: 50,
       });
 
       expect(params["Applikation"]).toBe("RegV");
-      expect(params["Nummer"]).toBe("123");
-      expect(params["Gesetzgebungsperiode"]).toBe("27");
       expect(params["Suchworte"]).toBe("Klimaschutz");
       expect(params["Titel"]).toBe("Klimaschutzgesetz");
+      expect(params["BeschlussdatumVon"]).toBe("2024-01-01");
+      expect(params["BeschlussdatumBis"]).toBe("2024-12-31");
+      expect(params["EinbringendeStelle"]).toBe(
+        "BMK (Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie)"
+      );
+      expect(params["ImRisSeit"]).toBe("EinemJahr");
+      expect(params["Sortierung.SortDirection"]).toBe("Descending");
+      expect(params["Sortierung.SortedByColumn"]).toBe("Beschlussdatum");
       expect(params["Seitennummer"]).toBe(2);
       expect(params["DokumenteProSeite"]).toBe("Fifty");
     });

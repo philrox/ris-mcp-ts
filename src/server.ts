@@ -602,16 +602,58 @@ Use this tool for legislative history and parliamentary materials.
 Contains government proposals submitted to parliament.
 
 Example queries:
-  - nummer="123", gesetzgebungsperiode="27" -> Find specific bill
-  - suchworte="Klimaschutz" -> Full-text search in bills`,
+  - suchworte="Klimaschutz" -> Full-text search in bills
+  - einbringende_stelle="BMF (Bundesministerium für Finanzen)" -> Bills from Finance Ministry
+  - beschlussdatum_von="2024-01-01", beschlussdatum_bis="2024-12-31" -> Bills from 2024`,
   {
-    nummer: z.string().optional().describe('Bill number (e.g., "123")'),
-    gesetzgebungsperiode: z
-      .string()
-      .optional()
-      .describe('Legislative period (e.g., "27" for XXVII. GP)'),
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in bill titles"),
+    beschlussdatum_von: z
+      .string()
+      .optional()
+      .describe("Decision date from (YYYY-MM-DD)"),
+    beschlussdatum_bis: z
+      .string()
+      .optional()
+      .describe("Decision date to (YYYY-MM-DD)"),
+    einbringende_stelle: z
+      .enum([
+        "BKA (Bundeskanzleramt)",
+        "BMFFIM (Bundesministerin für Frauen, Familie, Integration und Medien im Bundeskanzleramt)",
+        "BMEUV (Bundesministerin für EU und Verfassung im Bundeskanzleramt)",
+        "BMKOES (Bundesministerium für Kunst, Kultur, öffentlichen Dienst und Sport)",
+        "BMEIA (Bundesministerium für europäische und internationale Angelegenheiten)",
+        "BMAW (Bundesministerium für Arbeit und Wirtschaft)",
+        "BMBWF (Bundesministerium für Bildung, Wissenschaft und Forschung)",
+        "BMF (Bundesministerium für Finanzen)",
+        "BMI (Bundesministerium für Inneres)",
+        "BMJ (Bundesministerium für Justiz)",
+        "BMK (Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie)",
+        "BMLV (Bundesministerium für Landesverteidigung)",
+        "BML (Bundesministerium für Land- und Forstwirtschaft, Regionen und Wasserwirtschaft)",
+        "BMSGPK (Bundesministerium für Soziales, Gesundheit, Pflege und Konsumentenschutz)",
+      ])
+      .optional()
+      .describe("Filter by submitting ministry"),
+    im_ris_seit: z
+      .enum([
+        "EinerWoche",
+        "ZweiWochen",
+        "EinemMonat",
+        "DreiMonaten",
+        "SechsMonaten",
+        "EinemJahr",
+      ])
+      .optional()
+      .describe("Filter by time in RIS"),
+    sortierung_richtung: z
+      .enum(["Ascending", "Descending"])
+      .optional()
+      .describe("Sort direction"),
+    sortierung_spalte: z
+      .enum(["Kurztitel", "EinbringendeStelle", "Beschlussdatum"])
+      .optional()
+      .describe("Sort by column"),
     seite: z.number().default(1).describe("Page number (default: 1)"),
     limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
     response_format: z
@@ -620,20 +662,33 @@ Example queries:
       .describe('"markdown" (default) or "json"'),
   },
   async (args) => {
-    const { nummer, gesetzgebungsperiode, suchworte, titel, seite, limit, response_format } = args;
+    const {
+      suchworte,
+      titel,
+      beschlussdatum_von,
+      beschlussdatum_bis,
+      einbringende_stelle,
+      im_ris_seit,
+      sortierung_richtung,
+      sortierung_spalte,
+      seite,
+      limit,
+      response_format,
+    } = args;
 
     // Validate at least one search parameter
-    if (!nummer && !gesetzgebungsperiode && !suchworte && !titel) {
+    if (!suchworte && !titel && !beschlussdatum_von && !einbringende_stelle && !im_ris_seit) {
       return {
         content: [
           {
             type: "text" as const,
             text:
               "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `nummer` fuer Vorlagen-Nummer\n" +
-              "- `gesetzgebungsperiode` fuer GP (z.B. 27)\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Titeln",
+              "- `suchworte` für Volltextsuche\n" +
+              "- `titel` für Suche in Titeln\n" +
+              "- `beschlussdatum_von/bis` für Datumsfilter\n" +
+              "- `einbringende_stelle` für Ministerium\n" +
+              "- `im_ris_seit` für Zeitfilter",
           },
         ],
       };
@@ -646,10 +701,14 @@ Example queries:
       Seitennummer: seite,
     };
 
-    if (nummer) params["Nummer"] = nummer;
-    if (gesetzgebungsperiode) params["Gesetzgebungsperiode"] = gesetzgebungsperiode;
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
+    if (beschlussdatum_von) params["BeschlussdatumVon"] = beschlussdatum_von;
+    if (beschlussdatum_bis) params["BeschlussdatumBis"] = beschlussdatum_bis;
+    if (einbringende_stelle) params["EinbringendeStelle"] = einbringende_stelle;
+    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
+    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
+    if (sortierung_spalte) params["Sortierung.SortedByColumn"] = sortierung_spalte;
 
     try {
       const apiResponse = await searchBundesrecht(params);
