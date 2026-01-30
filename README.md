@@ -330,7 +330,7 @@ Durchsucht die Aenderungshistorie von Rechtsdokumenten.
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
-| `applikation` | string | Ja | Anwendung (z.B. "BrKons", "LrKons", "Vfgh", "Vwgh") |
+| `applikation` | string | Ja | Anwendung (z.B. "Bundesnormen", "Landesnormen", "Justiz", "Vfgh", "Vwgh") |
 | `aenderungen_von` | string | Nein | Aenderungen ab Datum (YYYY-MM-DD) |
 | `aenderungen_bis` | string | Nein | Aenderungen bis Datum (YYYY-MM-DD) |
 | `include_deleted` | boolean | Nein | Geloeschte Dokumente einbeziehen (Standard: false) |
@@ -341,8 +341,8 @@ Durchsucht die Aenderungshistorie von Rechtsdokumenten.
 **Beispiele:**
 
 ```
-applikation="BrKons", aenderungen_von="2024-01-01", aenderungen_bis="2024-01-31"
-applikation="LrKons", aenderungen_von="2024-06-01"
+applikation="Bundesnormen", aenderungen_von="2024-01-01", aenderungen_bis="2024-01-31"
+applikation="Justiz", aenderungen_von="2024-06-01"
 ```
 
 ---

@@ -308,7 +308,10 @@ export async function getDocumentContent(
  * The {dokumentnummer} placeholder will be replaced with the actual document number.
  */
 const DOCUMENT_URL_PATTERNS: Record<string, string> = {
+  // Bundesrecht (Federal Law)
   NOR: "https://ris.bka.gv.at/Dokumente/Bundesnormen/{dokumentnummer}/{dokumentnummer}.html",
+
+  // Landesrecht (State Law) - one prefix per state
   LBG: "https://ris.bka.gv.at/Dokumente/LrBgld/{dokumentnummer}/{dokumentnummer}.html",
   LKT: "https://ris.bka.gv.at/Dokumente/LrK/{dokumentnummer}/{dokumentnummer}.html",
   LNO: "https://ris.bka.gv.at/Dokumente/LrNO/{dokumentnummer}/{dokumentnummer}.html",
@@ -318,12 +321,34 @@ const DOCUMENT_URL_PATTERNS: Record<string, string> = {
   LTI: "https://ris.bka.gv.at/Dokumente/LrT/{dokumentnummer}/{dokumentnummer}.html",
   LVO: "https://ris.bka.gv.at/Dokumente/LrVbg/{dokumentnummer}/{dokumentnummer}.html",
   LWI: "https://ris.bka.gv.at/Dokumente/LrW/{dokumentnummer}/{dokumentnummer}.html",
+
+  // Judikatur (Case Law)
   JWR: "https://ris.bka.gv.at/Dokumente/Vwgh/{dokumentnummer}/{dokumentnummer}.html",
   JFR: "https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html",
+  JFT: "https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html",
   JWT: "https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html",
   BVWG: "https://ris.bka.gv.at/Dokumente/Bvwg/{dokumentnummer}/{dokumentnummer}.html",
   LVWG: "https://ris.bka.gv.at/Dokumente/Lvwg/{dokumentnummer}/{dokumentnummer}.html",
   DSB: "https://ris.bka.gv.at/Dokumente/Dsk/{dokumentnummer}/{dokumentnummer}.html",
+  GBK: "https://ris.bka.gv.at/Dokumente/Gbk/{dokumentnummer}/{dokumentnummer}.html",
+  PVAK: "https://ris.bka.gv.at/Dokumente/Pvak/{dokumentnummer}/{dokumentnummer}.html",
+  ASYLGH: "https://ris.bka.gv.at/Dokumente/AsylGH/{dokumentnummer}/{dokumentnummer}.html",
+
+  // Bundesgesetzblätter (Federal Law Gazettes)
+  BGBLA: "https://ris.bka.gv.at/Dokumente/BgblAuth/{dokumentnummer}/{dokumentnummer}.html",
+  BGBL: "https://ris.bka.gv.at/Dokumente/BgblAlt/{dokumentnummer}/{dokumentnummer}.html",
+  BGBLPDF: "https://ris.bka.gv.at/Dokumente/BgblPdf/{dokumentnummer}/{dokumentnummer}.html",
+
+  // Regierungsvorlagen (Government Bills)
+  REGV: "https://ris.bka.gv.at/Dokumente/RegV/{dokumentnummer}/{dokumentnummer}.html",
+
+  // Sonstige (Miscellaneous)
+  MRP: "https://ris.bka.gv.at/Dokumente/Mrp/{dokumentnummer}/{dokumentnummer}.html",
+  ERL: "https://ris.bka.gv.at/Dokumente/Erlaesse/{dokumentnummer}/{dokumentnummer}.html",
+  PRUEF: "https://ris.bka.gv.at/Dokumente/PruefGewO/{dokumentnummer}/{dokumentnummer}.html",
+  AVSV: "https://ris.bka.gv.at/Dokumente/Avsv/{dokumentnummer}/{dokumentnummer}.html",
+  SPG: "https://ris.bka.gv.at/Dokumente/Spg/{dokumentnummer}/{dokumentnummer}.html",
+  KMGER: "https://ris.bka.gv.at/Dokumente/KmGer/{dokumentnummer}/{dokumentnummer}.html",
 };
 
 /**

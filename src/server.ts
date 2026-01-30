@@ -52,6 +52,43 @@ const BUNDESLAND_MAPPING: Record<string, string> = {
   Burgenland: "SucheInBurgenland",
 };
 
+/**
+ * Valid application names for the History API endpoint.
+ * The History API uses "Anwendung" parameter with specific application names.
+ */
+const VALID_HISTORY_APPLICATIONS = [
+  "Bundesnormen",
+  "Landesnormen",
+  "Justiz",
+  "Vfgh",
+  "Vwgh",
+  "Bvwg",
+  "Lvwg",
+  "BgblAuth",
+  "BgblAlt",
+  "BgblPdf",
+  "LgblAuth",
+  "Lgbl",
+  "LgblNO",
+  "Gemeinderecht",
+  "GemeinderechtAuth",
+  "Bvb",
+  "Vbl",
+  "RegV",
+  "Mrp",
+  "Erlaesse",
+  "PruefGewO",
+  "Avsv",
+  "Spg",
+  "KmGer",
+  "Dsk",
+  "Gbk",
+  "Dok",
+  "Pvak",
+  "Normenliste",
+  "AsylGH",
+] as const;
+
 // =============================================================================
 // Server Setup
 // =============================================================================
@@ -747,8 +784,48 @@ Note: For long documents, content may be truncated. Use specific searches to nar
               Dokumentnummer: dokumentnummer,
               DokumenteProSeite: "Ten",
             });
+          } else if (dokumentnummer.startsWith("GBK")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "Gbk",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("PVAK")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "Pvak",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("ASYLGH")) {
+            apiResponse = await searchJudikatur({
+              Applikation: "AsylGH",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("BGBLA") || dokumentnummer.startsWith("BGBL")) {
+            // Bundesgesetzblätter - use Bundesrecht endpoint
+            const applikation = dokumentnummer.startsWith("BGBLA") ? "BgblAuth" : "BgblAlt";
+            apiResponse = await searchBundesrecht({
+              Applikation: applikation,
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("REGV")) {
+            // Regierungsvorlagen - use Bundesrecht endpoint
+            apiResponse = await searchBundesrecht({
+              Applikation: "RegV",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
+          } else if (dokumentnummer.startsWith("MRP") || dokumentnummer.startsWith("ERL")) {
+            // Sonstige Sammlungen - use Sonstige endpoint
+            apiResponse = await searchSonstige({
+              Applikation: dokumentnummer.startsWith("MRP") ? "Mrp" : "Erlaesse",
+              Dokumentnummer: dokumentnummer,
+              DokumenteProSeite: "Ten",
+            });
           } else {
-            // Default to Justiz
+            // Default to Justiz for unknown prefixes
             apiResponse = await searchJudikatur({
               Applikation: "Justiz",
               Dokumentnummer: dokumentnummer,
@@ -949,10 +1026,8 @@ Example queries:
     if (entscheidungsdatum_von) params["EntscheidungsdatumVon"] = entscheidungsdatum_von;
     if (entscheidungsdatum_bis) params["EntscheidungsdatumBis"] = entscheidungsdatum_bis;
     if (bundesland) {
-      const apiKey = BUNDESLAND_MAPPING[bundesland];
-      if (apiKey) {
-        params[`Bundesland.${apiKey}`] = "true";
-      }
+      // Bvb API uses direct Bundesland string, not boolean flags
+      params["Bundesland"] = bundesland;
     }
 
     try {
@@ -1158,14 +1233,23 @@ server.tool(
 Use this tool to track changes to legal documents over time.
 Shows when documents were created, modified, or deleted.
 
+Available applications (30 total):
+  - Bundesrecht: Bundesnormen, BgblAuth, BgblAlt, BgblPdf, RegV
+  - Landesrecht: Landesnormen, LgblAuth, Lgbl, LgblNO, Vbl, Gemeinderecht, GemeinderechtAuth
+  - Judikatur: Justiz, Vfgh, Vwgh, Bvwg, Lvwg, Dsk, Gbk, Pvak, AsylGH
+  - Sonstige: Bvb, Mrp, Erlaesse, PruefGewO, Avsv, Spg, KmGer, Dok, Normenliste
+
 Example queries:
-  - applikation="BrKons", aenderungen_von="2024-01-01", aenderungen_bis="2024-01-31"
-  - applikation="LrKons", aenderungen_von="2024-06-01"`,
+  - applikation="Bundesnormen", aenderungen_von="2024-01-01", aenderungen_bis="2024-01-31"
+  - applikation="Justiz", aenderungen_von="2024-06-01"`,
   {
     applikation: z
-      .string()
+      .enum(VALID_HISTORY_APPLICATIONS)
       .describe(
-        'Application to search history for - e.g., "BrKons" (federal law), "LrKons" (state law), "Vfgh", "Vwgh", etc.'
+        'Application to search history for - categories: Bundesrecht (Bundesnormen, BgblAuth, BgblAlt, BgblPdf, RegV), ' +
+          'Landesrecht (Landesnormen, LgblAuth, Lgbl, LgblNO, Vbl, Gemeinderecht), ' +
+          'Judikatur (Justiz, Vfgh, Vwgh, Bvwg, Lvwg, Dsk, Gbk, Pvak, AsylGH), ' +
+          'Sonstige (Bvb, Mrp, Erlaesse, PruefGewO, Avsv, Spg, KmGer, Dok, Normenliste)'
       ),
     aenderungen_von: z.string().optional().describe("Changes from date (YYYY-MM-DD)"),
     aenderungen_bis: z.string().optional().describe("Changes to date (YYYY-MM-DD)"),
