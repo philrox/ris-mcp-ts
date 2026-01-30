@@ -1482,9 +1482,19 @@ describe("Sonstige search requirements", () => {
     expect(hasRequiredOnlyApp).toBeFalsy();
   });
 
-  it("should support all 6 applikation values", () => {
-    const supportedApplikationen = ["PruefGewO", "Avsv", "Spg", "KmGer", "Mrp", "Erlaesse"];
-    expect(supportedApplikationen).toHaveLength(6);
+  it("should support all 8 applikation values", () => {
+    const supportedApplikationen = ["PruefGewO", "Avsv", "Spg", "Avn", "KmGer", "Upts", "Mrp", "Erlaesse"];
+    expect(supportedApplikationen).toHaveLength(8);
+
+    // Verify all expected applikation values are present
+    expect(supportedApplikationen).toContain("PruefGewO");
+    expect(supportedApplikationen).toContain("Avsv");
+    expect(supportedApplikationen).toContain("Spg");
+    expect(supportedApplikationen).toContain("Avn");
+    expect(supportedApplikationen).toContain("KmGer");
+    expect(supportedApplikationen).toContain("Upts");
+    expect(supportedApplikationen).toContain("Mrp");
+    expect(supportedApplikationen).toContain("Erlaesse");
   });
 });
 
@@ -1796,7 +1806,7 @@ describe("Verordnungen API parameter mapping", () => {
 describe("Sonstige API parameter mapping", () => {
   // Re-implement the mapping logic for testing
   function buildSonstigeParams(args: {
-    applikation: "PruefGewO" | "Avsv" | "Spg" | "KmGer" | "Mrp" | "Erlaesse";
+    applikation: "PruefGewO" | "Avsv" | "Spg" | "Avn" | "KmGer" | "Upts" | "Mrp" | "Erlaesse";
     suchworte?: string;
     titel?: string;
     datum_von?: string;
@@ -1819,8 +1829,33 @@ describe("Sonstige API parameter mapping", () => {
 
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
-    if (datum_von) params["DatumVon"] = datum_von;
-    if (datum_bis) params["DatumBis"] = datum_bis;
+    if (datum_von || datum_bis) {
+      switch (applikation) {
+        case "Mrp":
+          if (datum_von) params["Sitzungsdatum.Von"] = datum_von;
+          if (datum_bis) params["Sitzungsdatum.Bis"] = datum_bis;
+          break;
+        case "Upts":
+          if (datum_von) params["Entscheidungsdatum.Von"] = datum_von;
+          if (datum_bis) params["Entscheidungsdatum.Bis"] = datum_bis;
+          break;
+        case "Erlaesse":
+          if (datum_von) params["VonInkrafttretensdatum"] = datum_von;
+          if (datum_bis) params["BisInkrafttretensdatum"] = datum_bis;
+          break;
+        case "PruefGewO":
+        case "Spg":
+        case "KmGer":
+          if (datum_von) params["Kundmachungsdatum.Von"] = datum_von;
+          if (datum_bis) params["Kundmachungsdatum.Bis"] = datum_bis;
+          break;
+        case "Avsv":
+        case "Avn":
+          if (datum_von) params["Kundmachung.Von"] = datum_von;
+          if (datum_bis) params["Kundmachung.Bis"] = datum_bis;
+          break;
+      }
+    }
 
     return params;
   }
@@ -1855,6 +1890,16 @@ describe("Sonstige API parameter mapping", () => {
       const params = buildSonstigeParams({ applikation: "Erlaesse", suchworte: "test" });
       expect(params["Applikation"]).toBe("Erlaesse");
     });
+
+    it("should map Avn to Applikation='Avn'", () => {
+      const params = buildSonstigeParams({ applikation: "Avn", suchworte: "test" });
+      expect(params["Applikation"]).toBe("Avn");
+    });
+
+    it("should map Upts to Applikation='Upts'", () => {
+      const params = buildSonstigeParams({ applikation: "Upts", suchworte: "test" });
+      expect(params["Applikation"]).toBe("Upts");
+    });
   });
 
   describe("suchworte parameter", () => {
@@ -1882,16 +1927,58 @@ describe("Sonstige API parameter mapping", () => {
   });
 
   describe("date parameters", () => {
-    it("should map datum_von to 'DatumVon' (not EntscheidungsdatumVon)", () => {
-      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", datum_von: "2023-01-01" });
-      expect(params["DatumVon"]).toBe("2023-01-01");
-      expect(params["EntscheidungsdatumVon"]).toBeUndefined();
+    it("should map datum_von/bis to 'Sitzungsdatum.Von/Bis' for Mrp", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["Sitzungsdatum.Von"]).toBe("2023-01-01");
+      expect(params["Sitzungsdatum.Bis"]).toBe("2023-12-31");
     });
 
-    it("should map datum_bis to 'DatumBis' (not EntscheidungsdatumBis)", () => {
-      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test", datum_bis: "2023-12-31" });
-      expect(params["DatumBis"]).toBe("2023-12-31");
-      expect(params["EntscheidungsdatumBis"]).toBeUndefined();
+    it("should map datum_von/bis to 'Entscheidungsdatum.Von/Bis' for Upts", () => {
+      const params = buildSonstigeParams({ applikation: "Upts", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["Entscheidungsdatum.Von"]).toBe("2023-01-01");
+      expect(params["Entscheidungsdatum.Bis"]).toBe("2023-12-31");
+    });
+
+    it("should map datum_von/bis to 'VonInkrafttretensdatum/BisInkrafttretensdatum' for Erlaesse", () => {
+      const params = buildSonstigeParams({ applikation: "Erlaesse", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["VonInkrafttretensdatum"]).toBe("2023-01-01");
+      expect(params["BisInkrafttretensdatum"]).toBe("2023-12-31");
+    });
+
+    it("should map datum_von/bis to 'Kundmachungsdatum.Von/Bis' for PruefGewO", () => {
+      const params = buildSonstigeParams({ applikation: "PruefGewO", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["Kundmachungsdatum.Von"]).toBe("2023-01-01");
+      expect(params["Kundmachungsdatum.Bis"]).toBe("2023-12-31");
+    });
+
+    it("should map datum_von/bis to 'Kundmachungsdatum.Von/Bis' for Spg", () => {
+      const params = buildSonstigeParams({ applikation: "Spg", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["Kundmachungsdatum.Von"]).toBe("2023-01-01");
+      expect(params["Kundmachungsdatum.Bis"]).toBe("2023-12-31");
+    });
+
+    it("should map datum_von/bis to 'Kundmachungsdatum.Von/Bis' for KmGer", () => {
+      const params = buildSonstigeParams({ applikation: "KmGer", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["Kundmachungsdatum.Von"]).toBe("2023-01-01");
+      expect(params["Kundmachungsdatum.Bis"]).toBe("2023-12-31");
+    });
+
+    it("should map datum_von/bis to 'Kundmachung.Von/Bis' for Avsv", () => {
+      const params = buildSonstigeParams({ applikation: "Avsv", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["Kundmachung.Von"]).toBe("2023-01-01");
+      expect(params["Kundmachung.Bis"]).toBe("2023-12-31");
+    });
+
+    it("should map datum_von/bis to 'Kundmachung.Von/Bis' for Avn", () => {
+      const params = buildSonstigeParams({ applikation: "Avn", suchworte: "test", datum_von: "2023-01-01", datum_bis: "2023-12-31" });
+      expect(params["Kundmachung.Von"]).toBe("2023-01-01");
+      expect(params["Kundmachung.Bis"]).toBe("2023-12-31");
+    });
+
+    it("should not include date params when not provided", () => {
+      const params = buildSonstigeParams({ applikation: "Mrp", suchworte: "test" });
+      expect(params["Sitzungsdatum.Von"]).toBeUndefined();
+      expect(params["Sitzungsdatum.Bis"]).toBeUndefined();
     });
   });
 
@@ -1928,7 +2015,7 @@ describe("Sonstige API parameter mapping", () => {
   });
 
   describe("combined parameters", () => {
-    it("should correctly map all parameters together", () => {
+    it("should correctly map all parameters together for Mrp", () => {
       const params = buildSonstigeParams({
         applikation: "Mrp",
         suchworte: "Budget",
@@ -1942,8 +2029,8 @@ describe("Sonstige API parameter mapping", () => {
       expect(params["Applikation"]).toBe("Mrp");
       expect(params["Suchworte"]).toBe("Budget");
       expect(params["Titel"]).toBe("Ministerrat");
-      expect(params["DatumVon"]).toBe("2023-01-01");
-      expect(params["DatumBis"]).toBe("2023-12-31");
+      expect(params["Sitzungsdatum.Von"]).toBe("2023-01-01");
+      expect(params["Sitzungsdatum.Bis"]).toBe("2023-12-31");
       expect(params["Seitennummer"]).toBe(2);
       expect(params["DokumenteProSeite"]).toBe("Fifty");
     });

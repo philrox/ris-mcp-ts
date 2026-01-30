@@ -1153,20 +1153,24 @@ Use this tool for specialized legal documents and historical materials.
 
 Available applications:
   - PruefGewO: Trade licensing examinations (Gewerbeordnung)
-  - Avsv: Official veterinary notices
-  - Spg: Security Police Act guidelines
-  - KmGer: War Ministry documents (historical)
-  - Mrp: Council of Ministers protocols
-  - Erlaesse: Ministerial decrees
+  - Avsv: Social insurance announcements (Sozialversicherung)
+  - Spg: Health structure plans (Strukturpläne Gesundheit)
+  - Avn: Official veterinary notices (Amtliche Veterinärnachrichten)
+  - KmGer: Court announcements (Kundmachungen der Gerichte)
+  - Upts: Party transparency decisions (Parteien-Transparenz-Senat)
+  - Mrp: Council of Ministers protocols (Ministerratsprotokolle)
+  - Erlaesse: Ministerial decrees (Erlässe der Bundesministerien)
 
 Example queries:
   - applikation="Mrp", suchworte="Budget"
-  - applikation="Erlaesse", titel="Finanzministerium"`,
+  - applikation="Erlaesse", titel="Finanzministerium"
+  - applikation="Avn", suchworte="Tiergesundheit"
+  - applikation="Upts", suchworte="Partei"`,
   {
     applikation: z
-      .enum(["PruefGewO", "Avsv", "Spg", "KmGer", "Mrp", "Erlaesse"])
+      .enum(["PruefGewO", "Avsv", "Spg", "Avn", "KmGer", "Upts", "Mrp", "Erlaesse"])
       .describe(
-        'Collection to search - "PruefGewO" (trade exams), "Avsv" (veterinary), "Spg" (security police), "KmGer" (war ministry), "Mrp" (cabinet protocols), "Erlaesse" (decrees)'
+        'Collection to search - "PruefGewO" (trade exams), "Avsv" (social insurance), "Spg" (health plans), "Avn" (veterinary notices), "KmGer" (court announcements), "Upts" (party transparency), "Mrp" (cabinet protocols), "Erlaesse" (decrees)'
       ),
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in titles"),
@@ -1207,8 +1211,35 @@ Example queries:
 
     if (suchworte) params["Suchworte"] = suchworte;
     if (titel) params["Titel"] = titel;
-    if (datum_von) params["DatumVon"] = datum_von;
-    if (datum_bis) params["DatumBis"] = datum_bis;
+
+    // Build date parameters based on application type
+    if (datum_von || datum_bis) {
+      switch (applikation) {
+        case "Mrp":
+          if (datum_von) params["Sitzungsdatum.Von"] = datum_von;
+          if (datum_bis) params["Sitzungsdatum.Bis"] = datum_bis;
+          break;
+        case "Upts":
+          if (datum_von) params["Entscheidungsdatum.Von"] = datum_von;
+          if (datum_bis) params["Entscheidungsdatum.Bis"] = datum_bis;
+          break;
+        case "Erlaesse":
+          if (datum_von) params["VonInkrafttretensdatum"] = datum_von;
+          if (datum_bis) params["BisInkrafttretensdatum"] = datum_bis;
+          break;
+        case "PruefGewO":
+        case "Spg":
+        case "KmGer":
+          if (datum_von) params["Kundmachungsdatum.Von"] = datum_von;
+          if (datum_bis) params["Kundmachungsdatum.Bis"] = datum_bis;
+          break;
+        case "Avsv":
+        case "Avn":
+          if (datum_von) params["Kundmachung.Von"] = datum_von;
+          if (datum_bis) params["Kundmachung.Bis"] = datum_bis;
+          break;
+      }
+    }
 
     try {
       const apiResponse = await searchSonstige(params);
