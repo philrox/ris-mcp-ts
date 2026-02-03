@@ -201,26 +201,50 @@ Durchsucht Regierungsvorlagen - Gesetzesentwuerfe der Bundesregierung an das Par
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
-| `nummer` | string | Nein | Vorlagen-Nummer (z.B. "123") |
-| `gesetzgebungsperiode` | string | Nein | Gesetzgebungsperiode (z.B. "27" fuer XXVII. GP) |
 | `suchworte` | string | Nein | Volltextsuche |
 | `titel` | string | Nein | Suche in Titeln |
+| `beschlussdatum_von` | string | Nein | Beschlussdatum ab (YYYY-MM-DD) |
+| `beschlussdatum_bis` | string | Nein | Beschlussdatum bis (YYYY-MM-DD) |
+| `einbringende_stelle` | string | Nein | Einbringendes Ministerium (siehe unten) |
+| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
+| `sortierung_richtung` | string | Nein | Ascending oder Descending |
+| `sortierung_spalte` | string | Nein | Kurztitel, EinbringendeStelle, Beschlussdatum |
 | `seite` | number | Nein | Seitennummer |
 | `limit` | number | Nein | Ergebnisse pro Seite |
 | `response_format` | string | Nein | "markdown" oder "json" |
 
+**Verfuegbare Ministerien:**
+
+| Kuerzel | Ministerium |
+|---------|-------------|
+| BKA | Bundeskanzleramt |
+| BMF | Bundesministerium fuer Finanzen |
+| BMI | Bundesministerium fuer Inneres |
+| BMJ | Bundesministerium fuer Justiz |
+| BMK | Bundesministerium fuer Klimaschutz |
+| BMLV | Bundesministerium fuer Landesverteidigung |
+| BMAW | Bundesministerium fuer Arbeit und Wirtschaft |
+| BMBWF | Bundesministerium fuer Bildung, Wissenschaft und Forschung |
+| BMDW | Bundesministerium fuer Digitalisierung und Wirtschaftsstandort |
+| BMEIA | Bundesministerium fuer Europa und Aeusseres |
+| BMSGPK | Bundesministerium fuer Soziales, Gesundheit, Pflege und Konsumentenschutz |
+| BML | Bundesministerium fuer Land- und Forstwirtschaft |
+| BMKOES | Bundesministerium fuer Kunst, Kultur, Sport |
+| BMFSFJ | Bundesministerium fuer Frauen, Familie, Integration und Medien |
+
 **Beispiele:**
 
 ```
-nummer="123", gesetzgebungsperiode="27"
 suchworte="Klimaschutz"
+einbringende_stelle="BMK", beschlussdatum_von="2024-01-01"
+titel="Steuerreform", sortierung_richtung="Descending"
 ```
 
 ---
 
 ### ris_dokument
 
-Ruft den Volltext eines Rechtsdokuments ab.
+Ruft den Volltext eines Rechtsdokuments ab. Verwendet eine Dual-Strategie: Erst direkter URL-Zugriff, bei Fehlschlag Fallback ueber Such-API.
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
@@ -228,12 +252,27 @@ Ruft den Volltext eines Rechtsdokuments ab.
 | `url` | string | Nein | Direkte URL zum Dokumentinhalt |
 | `response_format` | string | Nein | "markdown" (Standard) oder "json" |
 
-**Hinweis:** Bei langen Dokumenten wird der Inhalt moeglicherweise gekuerzt. Verwende spezifische Suchen, um den Umfang einzugrenzen.
+**Hinweis:** Bei langen Dokumenten wird der Inhalt auf 25.000 Zeichen gekuerzt.
+
+**Unterstuetzte Dokumenttypen (Praefix-basiertes Routing):**
+
+| Praefix | Dokumenttyp |
+|---------|-------------|
+| NOR | Bundesnormen (Bundesgesetze) |
+| LBG, LKT, LNO, LOO, LSB, LST, LTI, LVB, LWI | Landesgesetze (9 Bundeslaender) |
+| JWR, JFR, JWT | VwGH, VfGH, Justiz Entscheidungen |
+| BVWG, LVWG, DSB, GBK, PVAK, ASYLGH | Weitere Gerichte |
+| BGBLA, BGBL | Bundesgesetzblatt |
+| REGV | Regierungsvorlagen |
+| BVB | Bezirksverwaltungsbehoerden |
+| VBL | Verordnungsblaetter |
+| MRP, ERL | Ministerratsprotokolle, Erlaesse |
 
 **Beispiele:**
 
 ```
 dokumentnummer="NOR40052761"
+dokumentnummer="JWR_2024100001"
 url="https://www.ris.bka.gv.at/..."
 ```
 
@@ -273,68 +312,177 @@ bundesland="Tirol", im_ris_seit="EinemMonat"
 
 Durchsucht Gemeinderecht - kommunale Verordnungen und Vorschriften.
 
+**Allgemeine Parameter:**
+
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
 | `suchworte` | string | Nein | Volltextsuche |
 | `titel` | string | Nein | Suche in Titeln |
 | `bundesland` | string | Nein | Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
 | `gemeinde` | string | Nein | Gemeindename (z.B. "Graz") |
-| `applikation` | string | Nein | "Gr" (Gemeinderecht, Standard) oder "GrA" (grenzueberschreitend) |
+| `applikation` | string | Nein | "Gr" (Gemeinderecht, Standard) oder "GrA" (Amtsblaetter) |
+| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
+| `sortierung_richtung` | string | Nein | Ascending oder Descending |
 | `seite` | number | Nein | Seitennummer |
 | `limit` | number | Nein | Ergebnisse pro Seite |
 | `response_format` | string | Nein | "markdown" oder "json" |
+
+**Gr-spezifische Parameter (Gemeinderecht):**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `geschaeftszahl` | string | Aktenzeichen |
+| `index` | string | Sachbereich (siehe Index-Werte) |
+| `fassung_vom` | string | Historische Fassung (YYYY-MM-DD) |
+| `sortierung_spalte_gr` | string | Geschaeftszahl, Bundesland, Gemeinde |
+
+**GrA-spezifische Parameter (Amtsblaetter):**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `bezirk` | string | Bezirksname (z.B. "Bregenz") |
+| `gemeindeverband` | string | Gemeindeverband |
+| `kundmachungsnummer` | string | Kundmachungsnummer |
+| `kundmachungsdatum_von` | string | Kundmachungsdatum ab (YYYY-MM-DD) |
+| `kundmachungsdatum_bis` | string | Kundmachungsdatum bis (YYYY-MM-DD) |
+
+**Index-Werte (fuer Gr):**
+
+- VertretungskoerperUndAllgemeineVerwaltung
+- OeffentlicheOrdnungUndSicherheit
+- UnterrichtErziehungSportUndWissenschaft
+- KunstKulturUndKultus
+- SozialeWohlfahrtUndWohnbaufoerderung
+- Gesundheit
+- StrassenUndWasserbauVerkehr
+- Wirtschaftsfoerderung
+- Dienstleistungen
+- Finanzwirtschaft
+- Undefined
 
 **Beispiele:**
 
 ```
 gemeinde="Graz", suchworte="Parkgebuehren"
 bundesland="Tirol", titel="Gebuehrenordnung"
+applikation="Gr", index="Gesundheit", bundesland="Wien"
+applikation="GrA", bezirk="Bregenz", kundmachungsdatum_von="2024-01-01"
 ```
 
 ---
 
 ### ris_sonstige
 
-Durchsucht sonstige Rechtssammlungen und historische Materialien.
+Durchsucht sonstige Rechtssammlungen und spezialisierte Datenbanken.
+
+**Allgemeine Parameter:**
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
 | `applikation` | string | Ja | Sammlung (siehe unten) |
 | `suchworte` | string | Nein | Volltextsuche |
 | `titel` | string | Nein | Suche in Titeln |
-| `datum_von` | string | Nein | Datum ab (YYYY-MM-DD) |
+| `datum_von` | string | Nein | Datum ab (YYYY-MM-DD) - Feldname variiert je nach Applikation |
 | `datum_bis` | string | Nein | Datum bis (YYYY-MM-DD) |
+| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
+| `sortierung_richtung` | string | Nein | Ascending oder Descending |
+| `geschaeftszahl` | string | Nein | Geschaeftszahl (Mrp, Upts, KmGer) |
+| `norm` | string | Nein | Rechtsnorm (Erlaesse, Upts) |
+| `fassung_vom` | string | Nein | Historische Fassung (Erlaesse) |
 | `seite` | number | Nein | Seitennummer |
 | `limit` | number | Nein | Ergebnisse pro Seite |
 | `response_format` | string | Nein | "markdown" oder "json" |
 
-**Verfuegbare Sammlungen:**
+**Verfuegbare Sammlungen (8):**
 
-| Wert | Beschreibung |
-|------|--------------|
-| `PruefGewO` | Gewerberechtliche Pruefungen |
-| `Avsv` | Amtliche Veterinaerkundmachungen |
-| `Spg` | Sicherheitspolizeigesetz-Richtlinien |
-| `KmGer` | Kriegsministerium (historisch) |
-| `Mrp` | Ministerratsprotokolle |
-| `Erlaesse` | Ministerialerlaesse |
+| Wert | Beschreibung | Spezifische Parameter |
+|------|--------------|----------------------|
+| `Mrp` | Ministerratsprotokolle | einbringer, sitzungsnummer, gesetzgebungsperiode |
+| `Erlaesse` | Ministerialerlaesse | bundesministerium, abteilung, fundstelle |
+| `Upts` | Parteientransparenz | partei |
+| `KmGer` | Gerichtskundmachungen | kmger_typ, gericht |
+| `Avsv` | Sozialversicherung | dokumentart, urheber, avsvnummer |
+| `Avn` | Amtliche Veterinaernachrichten | avnnummer, avn_typ |
+| `Spg` | Gesundheitsstrukturplaene | spgnummer, osg_typ, rsg_typ, rsg_land |
+| `PruefGewO` | Gewerberechtliche Pruefungen | pruefgewo_typ |
+
+**Mrp-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `einbringer` | string | Ministeriumskuerzel (BKA, BMF, BMI, etc.) |
+| `sitzungsnummer` | string | Sitzungsnummer |
+| `gesetzgebungsperiode` | string | Gesetzgebungsperiode (z.B. "27") |
+
+**Erlaesse-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `bundesministerium` | string | Bundesministerium |
+| `abteilung` | string | Abteilung |
+| `fundstelle` | string | Quellenangabe |
+
+**Upts-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `partei` | string | SPÖ, ÖVP, FPÖ, GRÜNE, NEOS, BZÖ |
+
+**Avsv-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `dokumentart` | string | Dokumentart |
+| `urheber` | string | ASVG, BSVG, GSVG, B-KUVG, FSVG, GehG |
+| `avsvnummer` | string | AVSV-Nummer |
+
+**Avn-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `avnnummer` | string | AVN-Nummer |
+| `avn_typ` | string | Kundmachung, Verordnung, Erlass |
+
+**Spg-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `spgnummer` | string | SPG-Nummer |
+| `osg_typ` | string | ÖSG, ÖSG - Großgeräteplan |
+| `rsg_typ` | string | RSG, RSG - Großgeräteplan |
+| `rsg_land` | string | Bundesland fuer RSG |
+
+**PruefGewO-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `pruefgewo_typ` | string | Befähigungsprüfung, Eignungsprüfung, Meisterprüfung |
+
+**KmGer-spezifische Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `kmger_typ` | string | Geschaeftsordnung, Geschaeftsverteilung |
+| `gericht` | string | Gerichtsname |
 
 **Beispiele:**
 
 ```
 applikation="Mrp", suchworte="Budget"
-applikation="Erlaesse", titel="Finanzministerium"
+applikation="Erlaesse", bundesministerium="BMF"
+applikation="Upts", partei="SPÖ"
+applikation="Avsv", urheber="ASVG"
 ```
 
 ---
 
 ### ris_history
 
-Durchsucht die Aenderungshistorie von Rechtsdokumenten.
+Durchsucht die Aenderungshistorie von Rechtsdokumenten. Ermoeglicht das Nachverfolgen von Dokumenterstellung, -aenderung und -loeschung.
 
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
-| `applikation` | string | Ja | Anwendung (z.B. "Bundesnormen", "Landesnormen", "Justiz", "Vfgh", "Vwgh") |
+| `applikation` | string | Ja | Anwendung (30 Optionen, siehe unten) |
 | `aenderungen_von` | string | Nein | Aenderungen ab Datum (YYYY-MM-DD) |
 | `aenderungen_bis` | string | Nein | Aenderungen bis Datum (YYYY-MM-DD) |
 | `include_deleted` | boolean | Nein | Geloeschte Dokumente einbeziehen (Standard: false) |
@@ -342,11 +490,21 @@ Durchsucht die Aenderungshistorie von Rechtsdokumenten.
 | `limit` | number | Nein | Ergebnisse pro Seite |
 | `response_format` | string | Nein | "markdown" oder "json" |
 
+**Verfuegbare Anwendungen (30):**
+
+| Kategorie | Anwendungen |
+|-----------|-------------|
+| Bundesrecht | Bundesnormen, BgblAuth, BgblAlt, BgblPdf, RegV |
+| Landesrecht | Landesnormen, LgblAuth, Lgbl, LgblNO, Vbl, Gemeinderecht, GemeinderechtAuth |
+| Judikatur | Justiz, Vfgh, Vwgh, Bvwg, Lvwg, Dsk, Gbk, Pvak, AsylGH |
+| Sonstige | Bvb, Mrp, Erlaesse, PruefGewO, Avsv, Spg, KmGer, Dok, Normenliste |
+
 **Beispiele:**
 
 ```
 applikation="Bundesnormen", aenderungen_von="2024-01-01", aenderungen_bis="2024-01-31"
 applikation="Justiz", aenderungen_von="2024-06-01"
+applikation="Vfgh", aenderungen_von="2024-01-01", include_deleted=true
 ```
 
 ---
@@ -355,13 +513,16 @@ applikation="Justiz", aenderungen_von="2024-06-01"
 
 Durchsucht Verordnungsblaetter der Laender.
 
+**Wichtig:** Derzeit sind nur Daten aus **Tirol** verfuegbar (seit 1. Januar 2022). Andere Bundeslaender haben ihre Verordnungsblaetter noch nicht im RIS veroeffentlicht.
+
 | Parameter | Typ | Pflicht | Beschreibung |
 |-----------|-----|---------|--------------|
 | `suchworte` | string | Nein | Volltextsuche |
 | `titel` | string | Nein | Suche in Titeln |
 | `bundesland` | string | Nein | Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
-| `vblnummer` | string | Nein | Verordnungsblatt-Nummer (z.B. "25") |
-| `jahrgang` | string | Nein | Jahr (z.B. "2023") |
+| `kundmachungsnummer` | string | Nein | Kundmachungsnummer |
+| `kundmachungsdatum_von` | string | Nein | Kundmachungsdatum ab (YYYY-MM-DD) |
+| `kundmachungsdatum_bis` | string | Nein | Kundmachungsdatum bis (YYYY-MM-DD) |
 | `seite` | number | Nein | Seitennummer |
 | `limit` | number | Nein | Ergebnisse pro Seite |
 | `response_format` | string | Nein | "markdown" oder "json" |
@@ -370,7 +531,7 @@ Durchsucht Verordnungsblaetter der Laender.
 
 ```
 bundesland="Tirol", suchworte="Parkordnung"
-vblnummer="25", jahrgang="2023", bundesland="Wien"
+kundmachungsdatum_von="2024-01-01", bundesland="Tirol"
 ```
 
 ## Anwendungsbeispiele
