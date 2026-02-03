@@ -43,6 +43,7 @@ export type JudikaturGericht = z.infer<typeof JudikaturGerichtSchema>;
 
 /**
  * Austrian federal states (Bundesländer).
+ * Note: Uses Umlauts (ö, ä) for display purposes.
  */
 export const BundeslandSchema = z.enum([
   "Wien",
@@ -56,6 +57,37 @@ export const BundeslandSchema = z.enum([
   "Burgenland",
 ]);
 export type Bundesland = z.infer<typeof BundeslandSchema>;
+
+/**
+ * Austrian federal states for Landesrecht API (ASCII versions without Umlauts).
+ * The RIS API uses the SucheIn format (e.g., Bundesland.SucheInWien=true).
+ */
+export const LANDESRECHT_BUNDESLAENDER = [
+  "Wien",
+  "Niederoesterreich",
+  "Oberoesterreich",
+  "Salzburg",
+  "Tirol",
+  "Vorarlberg",
+  "Kaernten",
+  "Steiermark",
+  "Burgenland",
+] as const;
+
+export const LandesrechtBundeslandSchema = z.enum(LANDESRECHT_BUNDESLAENDER);
+export type LandesrechtBundesland = z.infer<typeof LandesrechtBundeslandSchema>;
+
+/**
+ * Date format validation schema (YYYY-MM-DD).
+ * Used for date parameters in RIS API requests.
+ */
+export const DateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, {
+    message: "Datum muss im Format YYYY-MM-DD sein (z.B. 2024-01-15)",
+  });
+
+export const OptionalDateSchema = DateSchema.optional();
 
 /**
  * Number of documents per page for paginated API responses.

@@ -19,6 +19,7 @@ import {
   getDocumentContent,
   constructDocumentUrl,
   getDocumentByNumber,
+  isValidDokumentnummer,
 } from "../client.js";
 
 // =============================================================================
@@ -741,6 +742,108 @@ describe("getDocumentContent", () => {
 // =============================================================================
 
 // =============================================================================
+// isValidDokumentnummer Tests (Security)
+// =============================================================================
+
+describe("isValidDokumentnummer", () => {
+  describe("valid dokumentnummern", () => {
+    it("should accept valid Bundesrecht document number", () => {
+      expect(isValidDokumentnummer("NOR40052761")).toBe(true);
+    });
+
+    it("should accept valid BVwG document number with underscores", () => {
+      expect(isValidDokumentnummer("BVWG_W123_2000000_1_00")).toBe(true);
+    });
+
+    it("should accept valid Landesrecht document number", () => {
+      expect(isValidDokumentnummer("LWI12345678")).toBe(true);
+    });
+
+    it("should accept valid Judikatur document number", () => {
+      expect(isValidDokumentnummer("JFR_2024000001")).toBe(true);
+    });
+
+    it("should accept minimum length (5 characters)", () => {
+      expect(isValidDokumentnummer("NOR12")).toBe(true);
+    });
+
+    it("should accept maximum length (50 characters)", () => {
+      const longValid = "N" + "O".repeat(49);
+      expect(isValidDokumentnummer(longValid)).toBe(true);
+    });
+  });
+
+  describe("invalid dokumentnummern - injection attempts", () => {
+    it("should reject path traversal attempt", () => {
+      expect(isValidDokumentnummer("NOR../../../etc/passwd")).toBe(false);
+    });
+
+    it("should reject query injection attempt", () => {
+      expect(isValidDokumentnummer("NOR12345?evil=true")).toBe(false);
+    });
+
+    it("should reject fragment injection attempt", () => {
+      expect(isValidDokumentnummer("NOR12345#inject")).toBe(false);
+    });
+
+    it("should reject URL-encoded characters", () => {
+      expect(isValidDokumentnummer("NOR12345%2F..")).toBe(false);
+    });
+
+    it("should reject backslash path traversal", () => {
+      expect(isValidDokumentnummer("NOR..\\..\\etc")).toBe(false);
+    });
+
+    it("should reject spaces", () => {
+      expect(isValidDokumentnummer("NOR 12345")).toBe(false);
+    });
+
+    it("should reject special characters", () => {
+      expect(isValidDokumentnummer("NOR12345<script>")).toBe(false);
+    });
+  });
+
+  describe("invalid dokumentnummern - format violations", () => {
+    it("should reject lowercase letters", () => {
+      expect(isValidDokumentnummer("nor40052761")).toBe(false);
+    });
+
+    it("should reject mixed case", () => {
+      expect(isValidDokumentnummer("Nor40052761")).toBe(false);
+    });
+
+    it("should reject starting with number", () => {
+      expect(isValidDokumentnummer("1NOR40052761")).toBe(false);
+    });
+
+    it("should reject starting with underscore", () => {
+      expect(isValidDokumentnummer("_NOR40052761")).toBe(false);
+    });
+
+    it("should reject too short (less than 5 characters)", () => {
+      expect(isValidDokumentnummer("NOR1")).toBe(false);
+    });
+
+    it("should reject too long (more than 50 characters)", () => {
+      const tooLong = "N" + "O".repeat(50);
+      expect(isValidDokumentnummer(tooLong)).toBe(false);
+    });
+
+    it("should reject empty string", () => {
+      expect(isValidDokumentnummer("")).toBe(false);
+    });
+
+    it("should reject hyphens", () => {
+      expect(isValidDokumentnummer("NOR-12345")).toBe(false);
+    });
+
+    it("should reject dots", () => {
+      expect(isValidDokumentnummer("NOR.12345")).toBe(false);
+    });
+  });
+});
+
+// =============================================================================
 // constructDocumentUrl Tests
 // =============================================================================
 
@@ -801,10 +904,10 @@ describe("constructDocumentUrl", () => {
     );
   });
 
-  it("should construct URL for Landesrecht Vorarlberg (LVO prefix)", () => {
-    const url = constructDocumentUrl("LVO12345678");
+  it("should construct URL for Landesrecht Vorarlberg (LVB prefix)", () => {
+    const url = constructDocumentUrl("LVB12345678");
     expect(url).toBe(
-      "https://ris.bka.gv.at/Dokumente/LrVbg/LVO12345678/LVO12345678.html"
+      "https://ris.bka.gv.at/Dokumente/LrVbg/LVB12345678/LVB12345678.html"
     );
   });
 
@@ -836,6 +939,27 @@ describe("constructDocumentUrl", () => {
     );
   });
 
+  it("should construct URL for Justiz (JJR prefix)", () => {
+    const url = constructDocumentUrl("JJR12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Justiz/JJR12345678/JJR12345678.html"
+    );
+  });
+
+  it("should construct URL for Bezirke (BVB prefix)", () => {
+    const url = constructDocumentUrl("BVB12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Bvb/BVB12345678/BVB12345678.html"
+    );
+  });
+
+  it("should construct URL for Verordnungsblätter (VBL prefix)", () => {
+    const url = constructDocumentUrl("VBL12345678");
+    expect(url).toBe(
+      "https://ris.bka.gv.at/Dokumente/Vbl/VBL12345678/VBL12345678.html"
+    );
+  });
+
   it("should construct URL for BVwG (BVWG prefix)", () => {
     const url = constructDocumentUrl("BVWG12345678");
     expect(url).toBe(
@@ -864,6 +988,21 @@ describe("constructDocumentUrl", () => {
 
   it("should return null for empty string", () => {
     const url = constructDocumentUrl("");
+    expect(url).toBeNull();
+  });
+
+  it("should return null for invalid dokumentnummer with path traversal", () => {
+    const url = constructDocumentUrl("NOR../../../etc/passwd");
+    expect(url).toBeNull();
+  });
+
+  it("should return null for invalid dokumentnummer with query injection", () => {
+    const url = constructDocumentUrl("NOR12345?evil=true");
+    expect(url).toBeNull();
+  });
+
+  it("should return null for lowercase dokumentnummer", () => {
+    const url = constructDocumentUrl("nor12019037");
     expect(url).toBeNull();
   });
 
@@ -933,6 +1072,46 @@ describe("getDocumentByNumber", () => {
     }
 
     // Should not have called fetch
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should return error for path traversal attempt", async () => {
+    const result = await getDocumentByNumber("NOR../../../etc/passwd");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Ungueltige Dokumentnummer");
+    }
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should return error for query injection attempt", async () => {
+    const result = await getDocumentByNumber("NOR12345?evil=true");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Ungueltige Dokumentnummer");
+    }
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should return error for fragment injection attempt", async () => {
+    const result = await getDocumentByNumber("NOR12345#inject");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Ungueltige Dokumentnummer");
+    }
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should return error for lowercase dokumentnummer", async () => {
+    const result = await getDocumentByNumber("nor12019037");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Ungueltige Dokumentnummer");
+    }
     expect(mockFetch).not.toHaveBeenCalled();
   });
 

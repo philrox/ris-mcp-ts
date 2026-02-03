@@ -304,6 +304,26 @@ export async function getDocumentContent(
 // =============================================================================
 
 /**
+ * Validate dokumentnummer contains only safe characters.
+ * Defense-in-depth check in addition to Zod schema.
+ *
+ * Valid dokumentnummern:
+ * - Start with uppercase letter
+ * - Contain only uppercase letters, digits, and underscores
+ * - Length between 5 and 50 characters
+ *
+ * Examples: NOR40052761, BVWG_W123_2000000_1_00
+ */
+export function isValidDokumentnummer(dokumentnummer: string): boolean {
+  if (dokumentnummer.length < 5 || dokumentnummer.length > 50) {
+    return false;
+  }
+  // Only uppercase letters, digits, underscores allowed
+  // Must start with uppercase letter
+  return /^[A-Z][A-Z0-9_]+$/.test(dokumentnummer);
+}
+
+/**
  * URL patterns for different document types based on Dokumentnummer prefix.
  * The {dokumentnummer} placeholder will be replaced with the actual document number.
  */
@@ -319,7 +339,7 @@ const DOCUMENT_URL_PATTERNS: Record<string, string> = {
   LSB: "https://ris.bka.gv.at/Dokumente/LrSbg/{dokumentnummer}/{dokumentnummer}.html",
   LST: "https://ris.bka.gv.at/Dokumente/LrStmk/{dokumentnummer}/{dokumentnummer}.html",
   LTI: "https://ris.bka.gv.at/Dokumente/LrT/{dokumentnummer}/{dokumentnummer}.html",
-  LVO: "https://ris.bka.gv.at/Dokumente/LrVbg/{dokumentnummer}/{dokumentnummer}.html",
+  LVB: "https://ris.bka.gv.at/Dokumente/LrVbg/{dokumentnummer}/{dokumentnummer}.html",
   LWI: "https://ris.bka.gv.at/Dokumente/LrW/{dokumentnummer}/{dokumentnummer}.html",
 
   // Judikatur (Case Law)
@@ -327,6 +347,7 @@ const DOCUMENT_URL_PATTERNS: Record<string, string> = {
   JFR: "https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html",
   JFT: "https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html",
   JWT: "https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html",
+  JJR: "https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html",
   BVWG: "https://ris.bka.gv.at/Dokumente/Bvwg/{dokumentnummer}/{dokumentnummer}.html",
   LVWG: "https://ris.bka.gv.at/Dokumente/Lvwg/{dokumentnummer}/{dokumentnummer}.html",
   DSB: "https://ris.bka.gv.at/Dokumente/Dsk/{dokumentnummer}/{dokumentnummer}.html",
@@ -342,6 +363,12 @@ const DOCUMENT_URL_PATTERNS: Record<string, string> = {
   // Regierungsvorlagen (Government Bills)
   REGV: "https://ris.bka.gv.at/Dokumente/RegV/{dokumentnummer}/{dokumentnummer}.html",
 
+  // Bezirke (District Administrative Authorities)
+  BVB: "https://ris.bka.gv.at/Dokumente/Bvb/{dokumentnummer}/{dokumentnummer}.html",
+
+  // Verordnungsblätter (State Ordinance Gazettes)
+  VBL: "https://ris.bka.gv.at/Dokumente/Vbl/{dokumentnummer}/{dokumentnummer}.html",
+
   // Sonstige (Miscellaneous)
   MRP: "https://ris.bka.gv.at/Dokumente/Mrp/{dokumentnummer}/{dokumentnummer}.html",
   ERL: "https://ris.bka.gv.at/Dokumente/Erlaesse/{dokumentnummer}/{dokumentnummer}.html",
@@ -355,9 +382,14 @@ const DOCUMENT_URL_PATTERNS: Record<string, string> = {
  * Construct a direct document URL based on the Dokumentnummer prefix.
  *
  * @param dokumentnummer - The RIS document number (e.g., "NOR12019037")
- * @returns The constructed URL or null if prefix is unknown
+ * @returns The constructed URL or null if prefix is unknown or dokumentnummer is invalid
  */
 export function constructDocumentUrl(dokumentnummer: string): string | null {
+  // Validate before URL construction (defense-in-depth)
+  if (!isValidDokumentnummer(dokumentnummer)) {
+    return null;
+  }
+
   // Find matching prefix (check longer prefixes first to avoid false matches)
   const prefixes = Object.keys(DOCUMENT_URL_PATTERNS).sort((a, b) => b.length - a.length);
 
@@ -392,6 +424,14 @@ export async function getDocumentByNumber(
   dokumentnummer: string,
   timeout = DEFAULT_TIMEOUT
 ): Promise<DirectDocumentResult> {
+  // Validate dokumentnummer before any URL operations
+  if (!isValidDokumentnummer(dokumentnummer)) {
+    return {
+      success: false,
+      error: `Ungueltige Dokumentnummer: "${dokumentnummer}". Nur Grossbuchstaben, Ziffern und Unterstriche erlaubt (5-50 Zeichen, muss mit Buchstabe beginnen).`,
+    };
+  }
+
   const url = constructDocumentUrl(dokumentnummer);
 
   if (!url) {

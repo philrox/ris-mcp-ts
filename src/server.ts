@@ -30,7 +30,12 @@ import {
   type DocumentMetadata,
 } from "./formatting.js";
 import { findDocumentByDokumentnummer, parseSearchResults } from "./parser.js";
-import { limitToDokumenteProSeite } from "./types.js";
+import {
+  BundeslandSchema,
+  DateSchema,
+  LandesrechtBundeslandSchema,
+  limitToDokumenteProSeite,
+} from "./types.js";
 
 // =============================================================================
 // Constants
@@ -97,51 +102,45 @@ const UPTS_PARTEIEN = [
 
 /**
  * Federal ministries for Erlaesse (decrees) application.
+ * Values from API documentation - full names without abbreviations.
  */
 const BUNDESMINISTERIEN = [
-  "BKA (Bundeskanzleramt)",
-  "BMFFIM (Bundesministerin für Frauen, Familie, Integration und Medien im Bundeskanzleramt)",
-  "BMEUV (Bundesministerin für EU und Verfassung im Bundeskanzleramt)",
-  "BMKOES (Bundesministerium für Kunst, Kultur, öffentlichen Dienst und Sport)",
-  "BMEIA (Bundesministerium für europäische und internationale Angelegenheiten)",
-  "BMAW (Bundesministerium für Arbeit und Wirtschaft)",
-  "BMBWF (Bundesministerium für Bildung, Wissenschaft und Forschung)",
-  "BMF (Bundesministerium für Finanzen)",
-  "BMI (Bundesministerium für Inneres)",
-  "BMJ (Bundesministerium für Justiz)",
-  "BMK (Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie)",
-  "BMLV (Bundesministerium für Landesverteidigung)",
-  "BML (Bundesministerium für Land- und Forstwirtschaft, Regionen und Wasserwirtschaft)",
-  "BMSGPK (Bundesministerium für Soziales, Gesundheit, Pflege und Konsumentenschutz)",
+  "Bundeskanzleramt",
+  "Bundesministerium für Kunst, Kultur, öffentlichen Dienst und Sport",
+  "Bundesministerium für europäische und internationale Angelegenheiten",
+  "Bundesministerium für Arbeit und Wirtschaft",
+  "Bundesministerium für Bildung, Wissenschaft und Forschung",
+  "Bundesministerium für Finanzen",
+  "Bundesministerium für Inneres",
+  "Bundesministerium für Justiz",
+  "Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie",
+  "Bundesministerium für Landesverteidigung",
+  "Bundesministerium für Land- und Forstwirtschaft, Regionen und Wasserwirtschaft",
+  "Bundesministerium für Soziales, Gesundheit, Pflege und Konsumentenschutz",
 ] as const;
 
 /**
  * Document types for KmGer (court announcements) application.
+ * Values from API documentation page 53-54: Geschaeftsordnung, Geschaeftsverteilung
  */
 const KMGER_TYP_VALUES = [
-  "Konkursverfahren",
-  "Sanierungsverfahren",
+  "Geschaeftsordnung",
+  "Geschaeftsverteilung",
 ] as const;
 
-/**
- * Document types for Avsv (social insurance announcements) application.
- */
-const AVSV_DOKUMENTART_VALUES = [
-  "Richtlinie",
-  "Kundmachung",
-  "Verlautbarung",
-] as const;
+// Note: Avsv dokumentart is a FulltextSearchExpression (free text), not an enum
 
 /**
  * Authors (Urheber) for Avsv application.
+ * Values from API documentation - full names WITH abbreviations in parentheses.
  */
 const AVSV_URHEBER_VALUES = [
-  "Dachverband der Sozialversicherungsträger",
-  "Pensionsversicherungsanstalt",
-  "Österreichische Gesundheitskasse",
-  "Allgemeine Unfallversicherungsanstalt",
-  "Sozialversicherungsanstalt der Selbständigen",
-  "Versicherungsanstalt öffentlich Bediensteter, Eisenbahnen und Bergbau",
+  "Dachverband der Sozialversicherungsträger (DVSV)",
+  "Pensionsversicherungsanstalt (PVA)",
+  "Österreichische Gesundheitskasse (ÖGK)",
+  "Allgemeine Unfallversicherungsanstalt (AUVA)",
+  "Sozialversicherungsanstalt der Selbständigen (SVS)",
+  "Versicherungsanstalt öffentlich Bediensteter, Eisenbahnen und Bergbau (BVAEB)",
 ] as const;
 
 /**
@@ -261,6 +260,99 @@ function formatErrorResponse(error: unknown): string {
 }
 
 // =============================================================================
+// Helper Functions for Code Deduplication
+// =============================================================================
+
+/** MCP tool response type with index signature for SDK compatibility */
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+type McpToolResponse = {
+  [x: string]: unknown;
+  content: [{ type: "text"; text: string }];
+};
+
+/**
+ * Create a standard MCP text response.
+ */
+function createMcpResponse(text: string): McpToolResponse {
+  return { content: [{ type: "text" as const, text }] };
+}
+
+/**
+ * Create a validation error response listing required parameters.
+ */
+function createValidationErrorResponse(requiredParams: string[]): McpToolResponse {
+  const paramList = requiredParams.map((p) => `- \`${p}\``).join("\n");
+  return createMcpResponse(
+    "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" + paramList
+  );
+}
+
+/**
+ * Check if any of the specified parameters has a truthy value.
+ */
+function hasAnyParam(args: Record<string, unknown>, keys: string[]): boolean {
+  return keys.some((key) => {
+    const value = args[key];
+    return value !== undefined && value !== null && value !== "";
+  });
+}
+
+/**
+ * Build base API parameters common to all search requests.
+ */
+function buildBaseParams(
+  applikation: string,
+  limit: number,
+  seite: number
+): Record<string, unknown> {
+  return {
+    Applikation: applikation,
+    DokumenteProSeite: limitToDokumenteProSeite(limit),
+    Seitennummer: seite,
+  };
+}
+
+/**
+ * Add optional parameters to the params object.
+ * Only adds values that are truthy (not undefined, null, or empty string).
+ */
+function addOptionalParams(
+  params: Record<string, unknown>,
+  mappings: [value: unknown, key: string][]
+): void {
+  for (const [value, key] of mappings) {
+    if (value !== undefined && value !== null && value !== "") {
+      params[key] = value;
+    }
+  }
+}
+
+/** Search function type for API calls */
+type SearchFunction = (params: Record<string, unknown>) => Promise<unknown>;
+
+/**
+ * Execute a search tool and return formatted results.
+ * Handles the common try-catch, parsing, formatting, and truncation logic.
+ */
+async function executeSearchTool(
+  searchFn: SearchFunction,
+  params: Record<string, unknown>,
+  responseFormat: "markdown" | "json"
+): Promise<McpToolResponse> {
+  try {
+    const apiResponse = await searchFn(params);
+    const searchResult = parseSearchResults(
+      apiResponse as import("./types.js").NormalizedSearchResults
+    );
+    const formatted = formatSearchResults(searchResult, responseFormat);
+    const result = truncateResponse(formatted);
+    return createMcpResponse(result);
+  } catch (e) {
+    return createMcpResponse(formatErrorResponse(e));
+  }
+}
+
+// =============================================================================
 // Tool 1: ris_bundesrecht
 // =============================================================================
 
@@ -293,10 +385,9 @@ Example queries:
       .describe(
         'Data source - "BrKons" (consolidated, default), "Begut" (drafts), "Erv" (English)'
       ),
-    fassung_vom: z
-      .string()
-      .optional()
-      .describe("Date for historical version (YYYY-MM-DD)"),
+    fassung_vom: DateSchema.optional().describe(
+      "Date for historical version (YYYY-MM-DD)"
+    ),
     seite: z.number().default(1).describe("Page number (default: 1)"),
     limit: z
       .number()
@@ -311,52 +402,28 @@ Example queries:
     const { suchworte, titel, paragraph, applikation, fassung_vom, seite, limit, response_format } =
       args;
 
-    // Validate at least one search parameter
-    if (!suchworte && !titel && !paragraph) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Gesetzesnamen\n" +
-              "- `paragraph` fuer Suche nach Paragraphen",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["suchworte", "titel", "paragraph"])) {
+      return createValidationErrorResponse([
+        "suchworte` fuer Volltextsuche",
+        "titel` fuer Suche in Gesetzesnamen",
+        "paragraph` fuer Suche nach Paragraphen",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: applikation,
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams(applikation, limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+      [fassung_vom, "FassungVom"],
+    ]);
 
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
     if (paragraph) {
       params["Abschnitt.Von"] = paragraph;
       params["Abschnitt.Bis"] = paragraph;
       params["Abschnitt.Typ"] = "Paragraph";
     }
-    if (fassung_vom) params["FassungVom"] = fassung_vom;
 
-    try {
-      const apiResponse = await searchBundesrecht(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchBundesrecht, params, response_format);
   }
 );
 
@@ -374,12 +441,9 @@ Example: suchworte="Bauordnung", bundesland="Salzburg"`,
   {
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in law titles"),
-    bundesland: z
-      .string()
-      .optional()
-      .describe(
-        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
-      ),
+    bundesland: LandesrechtBundeslandSchema.optional().describe(
+      "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+    ),
     applikation: z
       .string()
       .default("LrKons")
@@ -394,31 +458,20 @@ Example: suchworte="Bauordnung", bundesland="Salzburg"`,
   async (args) => {
     const { suchworte, titel, bundesland, applikation, seite, limit, response_format } = args;
 
-    // Validate at least one search parameter
-    if (!suchworte && !titel && !bundesland) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Gesetzesnamen\n" +
-              "- `bundesland` fuer Suche nach Bundesland",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["suchworte", "titel", "bundesland"])) {
+      return createValidationErrorResponse([
+        "suchworte` fuer Volltextsuche",
+        "titel` fuer Suche in Gesetzesnamen",
+        "bundesland` fuer Suche nach Bundesland",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: applikation,
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams(applikation, limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+    ]);
 
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
     if (bundesland) {
       const apiKey = BUNDESLAND_MAPPING[bundesland];
       if (apiKey) {
@@ -426,20 +479,7 @@ Example: suchworte="Bauordnung", bundesland="Salzburg"`,
       }
     }
 
-    try {
-      const apiResponse = await searchLandesrecht(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchLandesrecht, params, response_format);
   }
 );
 
@@ -470,8 +510,8 @@ Example: gericht="Vfgh", suchworte="Grundrecht"`,
       .string()
       .optional()
       .describe('Case number (e.g., "5Ob234/20b")'),
-    entscheidungsdatum_von: z.string().optional().describe("Decision date from (YYYY-MM-DD)"),
-    entscheidungsdatum_bis: z.string().optional().describe("Decision date to (YYYY-MM-DD)"),
+    entscheidungsdatum_von: DateSchema.optional().describe("Decision date from (YYYY-MM-DD)"),
+    entscheidungsdatum_bis: DateSchema.optional().describe("Decision date to (YYYY-MM-DD)"),
     seite: z.number().default(1).describe("Page number"),
     limit: z.number().default(20).describe("Results per page"),
     response_format: z
@@ -492,49 +532,24 @@ Example: gericht="Vfgh", suchworte="Grundrecht"`,
       response_format,
     } = args;
 
-    // Validate at least one search parameter
-    if (!suchworte && !norm && !geschaeftszahl) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `norm` fuer Suche nach Rechtsnorm\n" +
-              "- `geschaeftszahl` fuer Suche nach Geschaeftszahl",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["suchworte", "norm", "geschaeftszahl"])) {
+      return createValidationErrorResponse([
+        "suchworte` fuer Volltextsuche",
+        "norm` fuer Suche nach Rechtsnorm",
+        "geschaeftszahl` fuer Suche nach Geschaeftszahl",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: gericht,
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams(gericht, limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [norm, "Norm"],
+      [geschaeftszahl, "Geschaeftszahl"],
+      [entscheidungsdatum_von, "EntscheidungsdatumVon"],
+      [entscheidungsdatum_bis, "EntscheidungsdatumBis"],
+    ]);
 
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (norm) params["Norm"] = norm;
-    if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
-    if (entscheidungsdatum_von) params["EntscheidungsdatumVon"] = entscheidungsdatum_von;
-    if (entscheidungsdatum_bis) params["EntscheidungsdatumBis"] = entscheidungsdatum_bis;
-
-    try {
-      const apiResponse = await searchJudikatur(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchJudikatur, params, response_format);
   }
 );
 
@@ -576,50 +591,25 @@ Example queries:
     const { bgblnummer, teil, jahrgang, suchworte, titel, applikation, seite, limit, response_format } =
       args;
 
-    // Validate at least one search parameter
-    if (!bgblnummer && !jahrgang && !suchworte && !titel) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `bgblnummer` fuer Gesetzblatt-Nummer\n" +
-              "- `jahrgang` fuer Jahr\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Titeln",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["bgblnummer", "jahrgang", "suchworte", "titel"])) {
+      return createValidationErrorResponse([
+        "bgblnummer` fuer Gesetzblatt-Nummer",
+        "jahrgang` fuer Jahr",
+        "suchworte` fuer Volltextsuche",
+        "titel` fuer Suche in Titeln",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: applikation,
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams(applikation, limit, seite);
+    addOptionalParams(params, [
+      [bgblnummer, "Bgblnummer"],
+      [teil, "Teil"],
+      [jahrgang, "Jahrgang"],
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+    ]);
 
-    if (bgblnummer) params["Bgblnummer"] = bgblnummer;
-    if (teil) params["Teil"] = teil;
-    if (jahrgang) params["Jahrgang"] = jahrgang;
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
-
-    try {
-      const apiResponse = await searchBundesrecht(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchBundesrecht, params, response_format);
   }
 );
 
@@ -640,12 +630,9 @@ Example queries:
   {
     lgblnummer: z.string().optional().describe('Gazette number (e.g., "50")'),
     jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
-    bundesland: z
-      .string()
-      .optional()
-      .describe(
-        "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
-      ),
+    bundesland: LandesrechtBundeslandSchema.optional().describe(
+      "Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland"
+    ),
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in gazette titles"),
     applikation: z
@@ -663,35 +650,24 @@ Example queries:
     const { lgblnummer, jahrgang, bundesland, suchworte, titel, applikation, seite, limit, response_format } =
       args;
 
-    // Validate at least one search parameter
-    if (!lgblnummer && !jahrgang && !bundesland && !suchworte && !titel) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `lgblnummer` fuer Gesetzblatt-Nummer\n" +
-              "- `jahrgang` fuer Jahr\n" +
-              "- `bundesland` fuer Bundesland\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Titeln",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["lgblnummer", "jahrgang", "bundesland", "suchworte", "titel"])) {
+      return createValidationErrorResponse([
+        "lgblnummer` fuer Gesetzblatt-Nummer",
+        "jahrgang` fuer Jahr",
+        "bundesland` fuer Bundesland",
+        "suchworte` fuer Volltextsuche",
+        "titel` fuer Suche in Titeln",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: applikation,
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams(applikation, limit, seite);
+    addOptionalParams(params, [
+      [lgblnummer, "Lgblnummer"],
+      [jahrgang, "Jahrgang"],
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+    ]);
 
-    if (lgblnummer) params["Lgblnummer"] = lgblnummer;
-    if (jahrgang) params["Jahrgang"] = jahrgang;
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
     if (bundesland) {
       const apiKey = BUNDESLAND_MAPPING[bundesland];
       if (apiKey) {
@@ -699,20 +675,7 @@ Example queries:
       }
     }
 
-    try {
-      const apiResponse = await searchLandesrecht(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchLandesrecht, params, response_format);
   }
 );
 
@@ -734,14 +697,12 @@ Example queries:
   {
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in bill titles"),
-    beschlussdatum_von: z
-      .string()
-      .optional()
-      .describe("Decision date from (YYYY-MM-DD)"),
-    beschlussdatum_bis: z
-      .string()
-      .optional()
-      .describe("Decision date to (YYYY-MM-DD)"),
+    beschlussdatum_von: DateSchema.optional().describe(
+      "Decision date from (YYYY-MM-DD)"
+    ),
+    beschlussdatum_bis: DateSchema.optional().describe(
+      "Decision date to (YYYY-MM-DD)"
+    ),
     einbringende_stelle: z
       .enum([
         "BKA (Bundeskanzleramt)",
@@ -802,54 +763,29 @@ Example queries:
       response_format,
     } = args;
 
-    // Validate at least one search parameter
-    if (!suchworte && !titel && !beschlussdatum_von && !einbringende_stelle && !im_ris_seit) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` für Volltextsuche\n" +
-              "- `titel` für Suche in Titeln\n" +
-              "- `beschlussdatum_von/bis` für Datumsfilter\n" +
-              "- `einbringende_stelle` für Ministerium\n" +
-              "- `im_ris_seit` für Zeitfilter",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["suchworte", "titel", "beschlussdatum_von", "einbringende_stelle", "im_ris_seit"])) {
+      return createValidationErrorResponse([
+        "suchworte` für Volltextsuche",
+        "titel` für Suche in Titeln",
+        "beschlussdatum_von/bis` für Datumsfilter",
+        "einbringende_stelle` für Ministerium",
+        "im_ris_seit` für Zeitfilter",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: "RegV",
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams("RegV", limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+      [beschlussdatum_von, "BeschlussdatumVon"],
+      [beschlussdatum_bis, "BeschlussdatumBis"],
+      [einbringende_stelle, "EinbringendeStelle"],
+      [im_ris_seit, "ImRisSeit"],
+      [sortierung_richtung, "Sortierung.SortDirection"],
+      [sortierung_spalte, "Sortierung.SortedByColumn"],
+    ]);
 
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
-    if (beschlussdatum_von) params["BeschlussdatumVon"] = beschlussdatum_von;
-    if (beschlussdatum_bis) params["BeschlussdatumBis"] = beschlussdatum_bis;
-    if (einbringende_stelle) params["EinbringendeStelle"] = einbringende_stelle;
-    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
-    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
-    if (sortierung_spalte) params["Sortierung.SortedByColumn"] = sortierung_spalte;
-
-    try {
-      const apiResponse = await searchBundesrecht(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchBundesrecht, params, response_format);
   }
 );
 
@@ -879,17 +815,11 @@ Note: For long documents, content may be truncated. Use specific searches to nar
     const { dokumentnummer, url: inputUrl, response_format } = args;
 
     if (!dokumentnummer && !inputUrl) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib entweder eine `dokumentnummer` oder eine `url` an.\n\n" +
-              "Die Dokumentnummer findest du in den Suchergebnissen von `ris_bundesrecht`, " +
-              "`ris_landesrecht` oder `ris_judikatur`.",
-          },
-        ],
-      };
+      return createMcpResponse(
+        "**Fehler:** Bitte gib entweder eine `dokumentnummer` oder eine `url` an.\n\n" +
+        "Die Dokumentnummer findest du in den Suchergebnissen von `ris_bundesrecht`, " +
+        "`ris_landesrecht` oder `ris_judikatur`."
+      );
     }
 
     try {
@@ -1025,32 +955,20 @@ Note: For long documents, content may be truncated. Use specific searches to nar
             // Both direct fetch and search failed - provide helpful error
             const directError = directResult.error;
             if (findResult.error === "no_documents") {
-              return {
-                content: [
-                  {
-                    type: "text" as const,
-                    text:
-                      `**Fehler:** Kein Dokument mit der Nummer \`${dokumentnummer}\` gefunden.\n\n` +
-                      `Direkter Abruf: ${directError}\n` +
-                      `Suche: Keine Ergebnisse.\n\n` +
-                      "Bitte pruefe die Dokumentnummer oder verwende eine Suche, " +
-                      "um das gewuenschte Dokument zu finden.",
-                  },
-                ],
-              };
+              return createMcpResponse(
+                `**Fehler:** Kein Dokument mit der Nummer \`${dokumentnummer}\` gefunden.\n\n` +
+                `Direkter Abruf: ${directError}\n` +
+                `Suche: Keine Ergebnisse.\n\n` +
+                "Bitte pruefe die Dokumentnummer oder verwende eine Suche, " +
+                "um das gewuenschte Dokument zu finden."
+              );
             } else {
-              return {
-                content: [
-                  {
-                    type: "text" as const,
-                    text:
-                      `**Fehler:** Dokument \`${dokumentnummer}\` nicht gefunden.\n\n` +
-                      `Direkter Abruf: ${directError}\n` +
-                      `Suche: ${findResult.totalResults} Ergebnisse, aber keines mit dieser Dokumentnummer.\n\n` +
-                      `Bitte verwende eine alternative Suche oder die direkte URL.`,
-                  },
-                ],
-              };
+              return createMcpResponse(
+                `**Fehler:** Dokument \`${dokumentnummer}\` nicht gefunden.\n\n` +
+                `Direkter Abruf: ${directError}\n` +
+                `Suche: ${findResult.totalResults} Ergebnisse, aber keines mit dieser Dokumentnummer.\n\n` +
+                `Bitte verwende eine alternative Suche oder die direkte URL.`
+              );
             }
           }
 
@@ -1058,16 +976,10 @@ Note: For long documents, content may be truncated. Use specific searches to nar
           contentUrl = doc.content_urls.html ?? undefined;
 
           if (!contentUrl) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text:
-                    `**Fehler:** Keine Inhalts-URL fuer Dokument \`${dokumentnummer}\` verfuegbar.\n\n` +
-                    "Das Dokument hat moeglicherweise keinen abrufbaren Volltext.",
-                },
-              ],
-            };
+            return createMcpResponse(
+              `**Fehler:** Keine Inhalts-URL fuer Dokument \`${dokumentnummer}\` verfuegbar.\n\n` +
+              "Das Dokument hat moeglicherweise keinen abrufbaren Volltext."
+            );
           }
 
           // Build metadata from search result
@@ -1102,14 +1014,7 @@ Note: For long documents, content may be truncated. Use specific searches to nar
       }
 
       if (!contentUrl) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: "**Fehler:** Keine gueltige URL zum Abrufen des Dokuments.",
-            },
-          ],
-        };
+        return createMcpResponse("**Fehler:** Keine gueltige URL zum Abrufen des Dokuments.");
       }
 
       // Fetch document content if not already fetched via direct URL
@@ -1121,13 +1026,9 @@ Note: For long documents, content may be truncated. Use specific searches to nar
       const formatted = formatDocument(htmlContent, metadata, response_format);
       const result = truncateResponse(formatted);
 
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
+      return createMcpResponse(result);
     } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
+      return createMcpResponse(formatErrorResponse(e));
     }
   }
 );
@@ -1150,12 +1051,9 @@ Example queries:
   {
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in titles"),
-    bundesland: z
-      .string()
-      .optional()
-      .describe(
-        "Filter by state - Burgenland, Kärnten, Niederösterreich, Oberösterreich, Salzburg, Steiermark, Tirol, Vorarlberg, Wien"
-      ),
+    bundesland: BundeslandSchema.optional().describe(
+      "Filter by state - Burgenland, Kärnten, Niederösterreich, Oberösterreich, Salzburg, Steiermark, Tirol, Vorarlberg, Wien"
+    ),
     bezirksverwaltungsbehoerde: z
       .string()
       .optional()
@@ -1163,8 +1061,12 @@ Example queries:
         'District authority name (e.g., "Bezirkshauptmannschaft Innsbruck", "Bezirkshauptmannschaft Amstetten")'
       ),
     kundmachungsnummer: z.string().optional().describe("Announcement number"),
-    kundmachungsdatum_von: z.string().optional().describe("Announcement date from (YYYY-MM-DD)"),
-    kundmachungsdatum_bis: z.string().optional().describe("Announcement date to (YYYY-MM-DD)"),
+    kundmachungsdatum_von: DateSchema.optional().describe(
+      "Announcement date from (YYYY-MM-DD)"
+    ),
+    kundmachungsdatum_bis: DateSchema.optional().describe(
+      "Announcement date to (YYYY-MM-DD)"
+    ),
     im_ris_seit: z
       .enum(["EinerWoche", "ZweiWochen", "EinemMonat", "DreiMonaten", "SechsMonaten", "EinemJahr"])
       .optional()
@@ -1191,54 +1093,37 @@ Example queries:
       response_format,
     } = args;
 
-    // Validate at least one search parameter
-    if (!suchworte && !titel && !bundesland && !bezirksverwaltungsbehoerde && !kundmachungsnummer) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` für Volltextsuche\n" +
-              "- `titel` für Titelsuche\n" +
-              "- `bundesland` für Bundesland\n" +
-              "- `bezirksverwaltungsbehoerde` für Bezirksverwaltungsbehörde\n" +
-              "- `kundmachungsnummer` für Kundmachungsnummer",
-          },
-        ],
-      };
+    if (
+      !hasAnyParam(args, [
+        "suchworte",
+        "titel",
+        "bundesland",
+        "bezirksverwaltungsbehoerde",
+        "kundmachungsnummer",
+      ])
+    ) {
+      return createValidationErrorResponse([
+        "suchworte` für Volltextsuche",
+        "titel` für Titelsuche",
+        "bundesland` für Bundesland",
+        "bezirksverwaltungsbehoerde` für Bezirksverwaltungsbehörde",
+        "kundmachungsnummer` für Kundmachungsnummer",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: "Bvb",
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams("Bvb", limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+      [bundesland, "Bundesland"],
+      [bezirksverwaltungsbehoerde, "Bezirksverwaltungsbehoerde"],
+      [kundmachungsnummer, "Kundmachungsnummer"],
+      [kundmachungsdatum_von, "Kundmachungsdatum.Von"],
+      [kundmachungsdatum_bis, "Kundmachungsdatum.Bis"],
+      [im_ris_seit, "ImRisSeit"],
+    ]);
 
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
-    if (bundesland) params["Bundesland"] = bundesland;
-    if (bezirksverwaltungsbehoerde) params["Bezirksverwaltungsbehoerde"] = bezirksverwaltungsbehoerde;
-    if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
-    if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
-    if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
-    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
-
-    try {
-      const apiResponse = await searchBezirke(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchBezirke, params, response_format);
   }
 );
 
@@ -1286,10 +1171,9 @@ Example queries:
       .describe(
         "Subject area index (Gr only) - VertretungskoerperUndAllgemeineVerwaltung, OeffentlicheOrdnungUndSicherheit, UnterrichtErziehungSportUndWissenschaft, KunstKulturUndKultus, SozialeWohlfahrtUndWohnbaufoerderung, Gesundheit, StraßenUndWasserbauVerkehr, Wirtschaftsfoerderung, Dienstleistungen, Finanzwirtschaft"
       ),
-    fassung_vom: z
-      .string()
-      .optional()
-      .describe("Historical version date (YYYY-MM-DD, Gr only)"),
+    fassung_vom: DateSchema.optional().describe(
+      "Historical version date (YYYY-MM-DD, Gr only)"
+    ),
     // Parameters for GrA application
     bezirk: z
       .string()
@@ -1303,14 +1187,12 @@ Example queries:
       .string()
       .optional()
       .describe("Announcement number (GrA only)"),
-    kundmachungsdatum_von: z
-      .string()
-      .optional()
-      .describe("Announcement date from (YYYY-MM-DD, GrA only)"),
-    kundmachungsdatum_bis: z
-      .string()
-      .optional()
-      .describe("Announcement date to (YYYY-MM-DD, GrA only)"),
+    kundmachungsdatum_von: DateSchema.optional().describe(
+      "Announcement date from (YYYY-MM-DD, GrA only)"
+    ),
+    kundmachungsdatum_bis: DateSchema.optional().describe(
+      "Announcement date to (YYYY-MM-DD, GrA only)"
+    ),
     // Common parameters
     im_ris_seit: z
       .enum(IM_RIS_SEIT_VALUES)
@@ -1354,73 +1236,51 @@ Example queries:
       response_format,
     } = args;
 
-    // Validate at least one search parameter
-    if (!suchworte && !titel && !bundesland && !gemeinde && !geschaeftszahl && !index && !bezirk && !kundmachungsnummer) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Titeln\n" +
-              "- `bundesland` fuer Bundesland\n" +
-              "- `gemeinde` fuer Gemeinde\n" +
-              "- `geschaeftszahl` fuer Aktenzeichen (Gr)\n" +
-              "- `index` fuer Sachgebiet (Gr)\n" +
-              "- `bezirk` fuer Bezirk (GrA)\n" +
-              "- `kundmachungsnummer` fuer Kundmachungsnummer (GrA)",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["suchworte", "titel", "bundesland", "gemeinde", "geschaeftszahl", "index", "bezirk", "kundmachungsnummer"])) {
+      return createValidationErrorResponse([
+        "suchworte` fuer Volltextsuche",
+        "titel` fuer Suche in Titeln",
+        "bundesland` fuer Bundesland",
+        "gemeinde` fuer Gemeinde",
+        "geschaeftszahl` fuer Aktenzeichen (Gr)",
+        "index` fuer Sachgebiet (Gr)",
+        "bezirk` fuer Bezirk (GrA)",
+        "kundmachungsnummer` fuer Kundmachungsnummer (GrA)",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: applikation,
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
-
-    // Common parameters
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
-    if (gemeinde) params["Gemeinde"] = gemeinde;
-    if (bundesland) params["Bundesland"] = bundesland;
-    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
-    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
+    const params = buildBaseParams(applikation, limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+      [gemeinde, "Gemeinde"],
+      [bundesland, "Bundesland"],
+      [im_ris_seit, "ImRisSeit"],
+      [sortierung_richtung, "Sortierung.SortDirection"],
+    ]);
 
     // Gr-specific parameters
     if (applikation === "Gr") {
-      if (geschaeftszahl) params["Geschaeftszahl"] = geschaeftszahl;
-      if (index) params["Index"] = index;
-      if (fassung_vom) params["FassungVom"] = fassung_vom;
-      if (sortierung_spalte_gr) params["Sortierung.SortedByColumn"] = sortierung_spalte_gr;
+      addOptionalParams(params, [
+        [geschaeftszahl, "Geschaeftszahl"],
+        [index, "Index"],
+        [fassung_vom, "FassungVom"],
+        [sortierung_spalte_gr, "Sortierung.SortedByColumn"],
+      ]);
     }
 
     // GrA-specific parameters
     if (applikation === "GrA") {
-      if (bezirk) params["Bezirk"] = bezirk;
-      if (gemeindeverband) params["Gemeindeverband"] = gemeindeverband;
-      if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
-      if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
-      if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
+      addOptionalParams(params, [
+        [bezirk, "Bezirk"],
+        [gemeindeverband, "Gemeindeverband"],
+        [kundmachungsnummer, "Kundmachungsnummer"],
+        [kundmachungsdatum_von, "Kundmachungsdatum.Von"],
+        [kundmachungsdatum_bis, "Kundmachungsdatum.Bis"],
+      ]);
     }
 
-    try {
-      const apiResponse = await searchGemeinden(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchGemeinden, params, response_format);
   }
 );
 
@@ -1446,9 +1306,9 @@ Available applications:
 
 Example queries:
   - applikation="Mrp", suchworte="Budget", einbringer="BMF..."
-  - applikation="Erlaesse", bundesministerium="BMF (Bundesministerium für Finanzen)"
+  - applikation="Erlaesse", bundesministerium="Bundesministerium für Finanzen"
   - applikation="Upts", partei="SPÖ - Sozialdemokratische Partei Österreichs"
-  - applikation="KmGer", kmger_typ="Konkursverfahren"
+  - applikation="KmGer", kmger_typ="Geschaeftsordnung"
   - applikation="Avsv", dokumentart="Richtlinie"`,
   {
     applikation: z
@@ -1458,8 +1318,8 @@ Example queries:
       ),
     suchworte: z.string().optional().describe("Full-text search terms"),
     titel: z.string().optional().describe("Search in titles"),
-    datum_von: z.string().optional().describe("Date from (YYYY-MM-DD)"),
-    datum_bis: z.string().optional().describe("Date to (YYYY-MM-DD)"),
+    datum_von: DateSchema.optional().describe("Date from (YYYY-MM-DD)"),
+    datum_bis: DateSchema.optional().describe("Date to (YYYY-MM-DD)"),
     // Common parameters
     im_ris_seit: z
       .enum(IM_RIS_SEIT_VALUES)
@@ -1477,10 +1337,9 @@ Example queries:
       .string()
       .optional()
       .describe("Legal norm reference (for Erlaesse, Upts)"),
-    fassung_vom: z
-      .string()
-      .optional()
-      .describe("Historical version date (YYYY-MM-DD, for Erlaesse)"),
+    fassung_vom: DateSchema.optional().describe(
+      "Historical version date (YYYY-MM-DD, for Erlaesse)"
+    ),
     // Mrp-specific parameters
     einbringer: z
       .string()
@@ -1516,16 +1375,16 @@ Example queries:
     kmger_typ: z
       .enum(KMGER_TYP_VALUES)
       .optional()
-      .describe("Announcement type (KmGer only) - Konkursverfahren, Sanierungsverfahren"),
+      .describe("Announcement type (KmGer only) - Geschaeftsordnung, Geschaeftsverteilung"),
     gericht: z
       .string()
       .optional()
       .describe("Court name (KmGer only)"),
     // Avsv-specific parameters
     dokumentart: z
-      .enum(AVSV_DOKUMENTART_VALUES)
+      .string()
       .optional()
-      .describe("Document type (Avsv only) - Richtlinie, Kundmachung, Verlautbarung"),
+      .describe("Document type search (Avsv only) - free text search expression"),
     urheber: z
       .enum(AVSV_URHEBER_VALUES)
       .optional()
@@ -1609,61 +1468,29 @@ Example queries:
     } = args;
 
     // Validate at least one search parameter beyond applikation
-    const hasSearchParam =
-      suchworte ||
-      titel ||
-      geschaeftszahl ||
-      norm ||
-      einbringer ||
-      sitzungsnummer ||
-      gesetzgebungsperiode ||
-      bundesministerium ||
-      abteilung ||
-      fundstelle ||
-      partei ||
-      kmger_typ ||
-      gericht ||
-      dokumentart ||
-      urheber ||
-      avsvnummer ||
-      avnnummer ||
-      avn_typ ||
-      spgnummer ||
-      osg_typ ||
-      rsg_typ ||
-      rsg_land ||
-      pruefgewo_typ ||
-      im_ris_seit ||
-      datum_von ||
-      datum_bis;
+    const searchParamKeys = [
+      "suchworte", "titel", "geschaeftszahl", "norm", "einbringer", "sitzungsnummer",
+      "gesetzgebungsperiode", "bundesministerium", "abteilung", "fundstelle", "partei",
+      "kmger_typ", "gericht", "dokumentart", "urheber", "avsvnummer", "avnnummer",
+      "avn_typ", "spgnummer", "osg_typ", "rsg_typ", "rsg_land", "pruefgewo_typ",
+      "im_ris_seit", "datum_von", "datum_bis",
+    ];
 
-    if (!hasSearchParam) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Suche in Titeln\n" +
-              "- oder applikationsspezifische Parameter (siehe Tool-Beschreibung)",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, searchParamKeys)) {
+      return createValidationErrorResponse([
+        "suchworte` fuer Volltextsuche",
+        "titel` fuer Suche in Titeln",
+        "oder applikationsspezifische Parameter (siehe Tool-Beschreibung)",
+      ]);
     }
 
-    // Build API parameters
-    const params: Record<string, unknown> = {
-      Applikation: applikation,
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
-
-    // Common parameters
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
-    if (im_ris_seit) params["ImRisSeit"] = im_ris_seit;
-    if (sortierung_richtung) params["Sortierung.SortDirection"] = sortierung_richtung;
+    const params = buildBaseParams(applikation, limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+      [im_ris_seit, "ImRisSeit"],
+      [sortierung_richtung, "Sortierung.SortDirection"],
+    ]);
 
     // Build date parameters based on application type
     if (datum_von || datum_bis) {
@@ -1739,20 +1566,7 @@ Example queries:
         break;
     }
 
-    try {
-      const apiResponse = await searchSonstige(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchSonstige, params, response_format);
   }
 );
 
@@ -1785,8 +1599,8 @@ Example queries:
           'Judikatur (Justiz, Vfgh, Vwgh, Bvwg, Lvwg, Dsk, Gbk, Pvak, AsylGH), ' +
           'Sonstige (Bvb, Mrp, Erlaesse, PruefGewO, Avsv, Spg, KmGer, Dok, Normenliste)'
       ),
-    aenderungen_von: z.string().optional().describe("Changes from date (YYYY-MM-DD)"),
-    aenderungen_bis: z.string().optional().describe("Changes to date (YYYY-MM-DD)"),
+    aenderungen_von: DateSchema.optional().describe("Changes from date (YYYY-MM-DD)"),
+    aenderungen_bis: DateSchema.optional().describe("Changes to date (YYYY-MM-DD)"),
     include_deleted: z
       .boolean()
       .default(false)
@@ -1802,22 +1616,13 @@ Example queries:
     const { applikation, aenderungen_von, aenderungen_bis, include_deleted, seite, limit, response_format } =
       args;
 
-    // Validate at least one date parameter
-    if (!aenderungen_von && !aenderungen_bis) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Datumsparameter an:\n" +
-              "- `aenderungen_von` fuer Aenderungen ab Datum\n" +
-              "- `aenderungen_bis` fuer Aenderungen bis Datum",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["aenderungen_von", "aenderungen_bis"])) {
+      return createValidationErrorResponse([
+        "aenderungen_von` fuer Aenderungen ab Datum",
+        "aenderungen_bis` fuer Aenderungen bis Datum",
+      ]);
     }
 
-    // Build API parameters
     // Note: History endpoint uses "Anwendung" not "Applikation"
     const params: Record<string, unknown> = {
       Anwendung: applikation,
@@ -1825,24 +1630,13 @@ Example queries:
       Seitennummer: seite,
     };
 
-    if (aenderungen_von) params["AenderungenVon"] = aenderungen_von;
-    if (aenderungen_bis) params["AenderungenBis"] = aenderungen_bis;
+    addOptionalParams(params, [
+      [aenderungen_von, "AenderungenVon"],
+      [aenderungen_bis, "AenderungenBis"],
+    ]);
     if (include_deleted) params["IncludeDeletedDocuments"] = "true";
 
-    try {
-      const apiResponse = await searchHistory(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchHistory, params, response_format);
   }
 );
 
@@ -1888,8 +1682,12 @@ Example queries:
       .optional()
       .describe("Filter by state (currently only Tirol has data)"),
     kundmachungsnummer: z.string().optional().describe("Publication number"),
-    kundmachungsdatum_von: z.string().optional().describe("Publication date from (YYYY-MM-DD)"),
-    kundmachungsdatum_bis: z.string().optional().describe("Publication date to (YYYY-MM-DD)"),
+    kundmachungsdatum_von: DateSchema.optional().describe(
+      "Publication date from (YYYY-MM-DD)"
+    ),
+    kundmachungsdatum_bis: DateSchema.optional().describe(
+      "Publication date to (YYYY-MM-DD)"
+    ),
     seite: z.number().default(1).describe("Page number (default: 1)"),
     limit: z.number().default(20).describe("Results per page 10/20/50/100 (default: 20)"),
     response_format: z
@@ -1910,53 +1708,28 @@ Example queries:
       response_format,
     } = args;
 
-    // Validate at least one search parameter
-    if (!suchworte && !titel && !bundesland && !kundmachungsnummer && !kundmachungsdatum_von) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text:
-              "**Fehler:** Bitte gib mindestens einen Suchparameter an:\n" +
-              "- `suchworte` fuer Volltextsuche\n" +
-              "- `titel` fuer Titelsuche\n" +
-              "- `bundesland` fuer Bundesland-Filter\n" +
-              "- `kundmachungsnummer` fuer Verordnungsnummer\n" +
-              "- `kundmachungsdatum_von` fuer Datum ab",
-          },
-        ],
-      };
+    if (!hasAnyParam(args, ["suchworte", "titel", "bundesland", "kundmachungsnummer", "kundmachungsdatum_von"])) {
+      return createValidationErrorResponse([
+        "suchworte` fuer Volltextsuche",
+        "titel` fuer Titelsuche",
+        "bundesland` fuer Bundesland-Filter",
+        "kundmachungsnummer` fuer Verordnungsnummer",
+        "kundmachungsdatum_von` fuer Datum ab",
+      ]);
     }
 
-    // Build API parameters
     // Uses Landesrecht endpoint with Applikation="Vbl"
     // Note: Vbl uses direct Bundesland values, NOT the SucheIn format used by Lgbl
-    const params: Record<string, unknown> = {
-      Applikation: "Vbl",
-      DokumenteProSeite: limitToDokumenteProSeite(limit),
-      Seitennummer: seite,
-    };
+    const params = buildBaseParams("Vbl", limit, seite);
+    addOptionalParams(params, [
+      [suchworte, "Suchworte"],
+      [titel, "Titel"],
+      [bundesland, "Bundesland"],
+      [kundmachungsnummer, "Kundmachungsnummer"],
+      [kundmachungsdatum_von, "Kundmachungsdatum.Von"],
+      [kundmachungsdatum_bis, "Kundmachungsdatum.Bis"],
+    ]);
 
-    if (suchworte) params["Suchworte"] = suchworte;
-    if (titel) params["Titel"] = titel;
-    if (bundesland) params["Bundesland"] = bundesland;
-    if (kundmachungsnummer) params["Kundmachungsnummer"] = kundmachungsnummer;
-    if (kundmachungsdatum_von) params["Kundmachungsdatum.Von"] = kundmachungsdatum_von;
-    if (kundmachungsdatum_bis) params["Kundmachungsdatum.Bis"] = kundmachungsdatum_bis;
-
-    try {
-      const apiResponse = await searchLandesrecht(params);
-      const searchResult = parseSearchResults(apiResponse);
-      const formatted = formatSearchResults(searchResult, response_format);
-      const result = truncateResponse(formatted);
-
-      return {
-        content: [{ type: "text" as const, text: result }],
-      };
-    } catch (e) {
-      return {
-        content: [{ type: "text" as const, text: formatErrorResponse(e) }],
-      };
-    }
+    return executeSearchTool(searchLandesrecht, params, response_format);
   }
 );
