@@ -63,6 +63,23 @@ const BASE_URL = 'https://data.bka.gv.at/ris/api/v2.6/';
 const DEFAULT_TIMEOUT = 30000; // 30 seconds in milliseconds
 
 /**
+ * Allowed hostnames for document content fetching (SSRF protection).
+ */
+const ALLOWED_DOCUMENT_HOSTNAMES = ['data.bka.gv.at', 'www.ris.bka.gv.at', 'ris.bka.gv.at'];
+
+/**
+ * Validate that a URL points to an allowed RIS domain (HTTPS only).
+ */
+export function isAllowedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && ALLOWED_DOCUMENT_HOSTNAMES.includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Build query parameters for API request.
  * Converts all values to strings and filters out undefined/null values.
  */

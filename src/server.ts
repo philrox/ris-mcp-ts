@@ -13,6 +13,7 @@ import { z } from 'zod';
 import {
   getDocumentByNumber,
   getDocumentContent,
+  isAllowedUrl,
   RISAPIError,
   RISParsingError,
   RISTimeoutError,
@@ -34,7 +35,9 @@ import { findDocumentByDokumentnummer, parseSearchResults } from './parser.js';
 import {
   type NormalizedSearchResults,
   BundeslandSchema,
+  BundesrechtApplikationSchema,
   DateSchema,
+  JudikaturGerichtSchema,
   LandesrechtBundeslandSchema,
   limitToDokumenteProSeite,
 } from './types.js';
@@ -352,19 +355,22 @@ Example queries:
   {
     suchworte: z
       .string()
+      .max(1000)
       .optional()
       .describe('Full-text search terms (e.g., "Mietrecht", "Schadenersatz")'),
-    titel: z.string().optional().describe('Search in law titles (e.g., "ABGB", "Strafgesetzbuch")'),
+    titel: z
+      .string()
+      .max(500)
+      .optional()
+      .describe('Search in law titles (e.g., "ABGB", "Strafgesetzbuch")'),
     paragraph: z
       .string()
+      .max(100)
       .optional()
       .describe('Paragraph number to search for (e.g., "1295" for §1295)'),
-    applikation: z
-      .string()
-      .default('BrKons')
-      .describe(
-        'Data source - "BrKons" (consolidated, default), "Begut" (drafts), "Erv" (English)',
-      ),
+    applikation: BundesrechtApplikationSchema.default('BrKons').describe(
+      'Data source - "BrKons" (consolidated, default), "Begut" (drafts), "BgblAuth" (gazette), "Erv" (English)',
+    ),
     fassung_vom: DateSchema.optional().describe('Date for historical version (YYYY-MM-DD)'),
     seite: z.number().default(1).describe('Page number (default: 1)'),
     limit: z.number().default(20).describe('Results per page 10/20/50/100 (default: 20)'),
@@ -414,12 +420,12 @@ Use this tool to find laws enacted by Austrian federal states (Bundeslaender).
 
 Example: suchworte="Bauordnung", bundesland="Salzburg"`,
   {
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in law titles'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in law titles'),
     bundesland: LandesrechtBundeslandSchema.optional().describe(
       'Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland',
     ),
-    applikation: z.string().default('LrKons').describe('"LrKons" (consolidated, default)'),
+    applikation: z.enum(['LrKons']).default('LrKons').describe('"LrKons" (consolidated, default)'),
     seite: z.number().default(1).describe('Page number'),
     limit: z.number().default(20).describe('Results per page'),
     response_format: z
@@ -467,15 +473,12 @@ Use this tool to find court decisions from Austrian courts.
 
 Example: gericht="Vfgh", suchworte="Grundrecht"`,
   {
-    suchworte: z.string().optional().describe('Full-text search in decisions'),
-    gericht: z
-      .string()
-      .default('Justiz')
-      .describe(
-        'Court - "Justiz" (OGH/OLG/LG, default), "Vfgh" (Constitutional), "Vwgh" (Administrative), "Bvwg", "Lvwg", "Dsk" (Data Protection), "AsylGH" (historical), "Normenliste", "Pvak", "Gbk", "Dok"',
-      ),
-    norm: z.string().optional().describe('Search by legal norm (e.g., "1319a ABGB")'),
-    geschaeftszahl: z.string().optional().describe('Case number (e.g., "5Ob234/20b")'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search in decisions'),
+    gericht: JudikaturGerichtSchema.default('Justiz').describe(
+      'Court - "Justiz" (OGH/OLG/LG, default), "Vfgh" (Constitutional), "Vwgh" (Administrative), "Bvwg", "Lvwg", "Dsk" (Data Protection), "AsylGH" (historical), "Normenliste", "Pvak", "Gbk", "Dok"',
+    ),
+    norm: z.string().max(500).optional().describe('Search by legal norm (e.g., "1319a ABGB")'),
+    geschaeftszahl: z.string().max(200).optional().describe('Case number (e.g., "5Ob234/20b")'),
     entscheidungsdatum_von: DateSchema.optional().describe('Decision date from (YYYY-MM-DD)'),
     entscheidungsdatum_bis: DateSchema.optional().describe('Decision date to (YYYY-MM-DD)'),
     seite: z.number().default(1).describe('Page number'),
@@ -534,14 +537,14 @@ Example queries:
   - bgblnummer="120", jahrgang="2023", teil="1" -> Find specific gazette
   - suchworte="Klimaschutz" -> Full-text search in gazettes`,
   {
-    bgblnummer: z.string().optional().describe('Gazette number (e.g., "120")'),
+    bgblnummer: z.string().max(100).optional().describe('Gazette number (e.g., "120")'),
     teil: z
       .enum(['1', '2', '3'])
       .optional()
       .describe('Part - "1" (I=Laws), "2" (II=Ordinances), "3" (III=Treaties)'),
-    jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in gazette titles'),
+    jahrgang: z.string().max(10).optional().describe('Year (e.g., "2023")'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in gazette titles'),
     applikation: z
       .enum(['BgblAuth', 'BgblPdf', 'BgblAlt'])
       .default('BgblAuth')
@@ -603,13 +606,13 @@ Example queries:
   - lgblnummer="50", jahrgang="2023", bundesland="Wien"
   - suchworte="Bauordnung", bundesland="Salzburg"`,
   {
-    lgblnummer: z.string().optional().describe('Gazette number (e.g., "50")'),
-    jahrgang: z.string().optional().describe('Year (e.g., "2023")'),
+    lgblnummer: z.string().max(100).optional().describe('Gazette number (e.g., "50")'),
+    jahrgang: z.string().max(10).optional().describe('Year (e.g., "2023")'),
     bundesland: LandesrechtBundeslandSchema.optional().describe(
       'Filter by state - Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland',
     ),
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in gazette titles'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in gazette titles'),
     applikation: z
       .enum(['LgblAuth', 'Lgbl', 'LgblNO'])
       .default('LgblAuth')
@@ -679,8 +682,8 @@ Example queries:
   - einbringende_stelle="BMF (Bundesministerium für Finanzen)" -> Bills from Finance Ministry
   - beschlussdatum_von="2024-01-01", beschlussdatum_bis="2024-12-31" -> Bills from 2024`,
   {
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in bill titles'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in bill titles'),
     beschlussdatum_von: DateSchema.optional().describe('Decision date from (YYYY-MM-DD)'),
     beschlussdatum_bis: DateSchema.optional().describe('Decision date to (YYYY-MM-DD)'),
     einbringende_stelle: z
@@ -797,6 +800,15 @@ Note: For long documents, content may be truncated. Use specific searches to nar
         '**Fehler:** Bitte gib entweder eine `dokumentnummer` oder eine `url` an.\n\n' +
           'Die Dokumentnummer findest du in den Suchergebnissen von `ris_bundesrecht`, ' +
           '`ris_landesrecht` oder `ris_judikatur`.',
+      );
+    }
+
+    // SSRF protection: validate user-supplied URLs against domain allowlist
+    if (inputUrl && !isAllowedUrl(inputUrl)) {
+      return createMcpResponse(
+        '**Fehler:** Die angegebene URL ist nicht erlaubt.\n\n' +
+          'Nur HTTPS-URLs zu offiziellen RIS-Domains sind zulaessig ' +
+          '(data.bka.gv.at, www.ris.bka.gv.at, ris.bka.gv.at).',
       );
     }
 
@@ -1027,18 +1039,19 @@ Example queries:
   - bundesland="Niederösterreich", suchworte="Bauordnung"
   - bezirksverwaltungsbehoerde="Bezirkshauptmannschaft Innsbruck"`,
   {
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in titles'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in titles'),
     bundesland: BundeslandSchema.optional().describe(
       'Filter by state - Burgenland, Kärnten, Niederösterreich, Oberösterreich, Salzburg, Steiermark, Tirol, Vorarlberg, Wien',
     ),
     bezirksverwaltungsbehoerde: z
       .string()
+      .max(200)
       .optional()
       .describe(
         'District authority name (e.g., "Bezirkshauptmannschaft Innsbruck", "Bezirkshauptmannschaft Amstetten")',
       ),
-    kundmachungsnummer: z.string().optional().describe('Announcement number'),
+    kundmachungsnummer: z.string().max(100).optional().describe('Announcement number'),
     kundmachungsdatum_von: DateSchema.optional().describe('Announcement date from (YYYY-MM-DD)'),
     kundmachungsdatum_bis: DateSchema.optional().describe('Announcement date to (YYYY-MM-DD)'),
     im_ris_seit: z
@@ -1121,21 +1134,22 @@ Example queries:
   - applikation="Gr", index="Baurecht"
   - applikation="GrA", bezirk="Bregenz"`,
   {
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in titles'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in titles'),
     bundesland: z
       .string()
+      .max(200)
       .optional()
       .describe(
         'Filter by state - Burgenland, Kärnten, Niederösterreich, Oberösterreich, Salzburg, Steiermark, Tirol, Vorarlberg, Wien',
       ),
-    gemeinde: z.string().optional().describe('Municipality name (e.g., "Graz")'),
+    gemeinde: z.string().max(200).optional().describe('Municipality name (e.g., "Graz")'),
     applikation: z
       .enum(['Gr', 'GrA'])
       .default('Gr')
       .describe('"Gr" (municipal law, default) or "GrA" (cross-border/Amtsblätter)'),
     // Parameters for Gr application
-    geschaeftszahl: z.string().optional().describe('File number/Aktenzeichen (Gr only)'),
+    geschaeftszahl: z.string().max(200).optional().describe('File number/Aktenzeichen (Gr only)'),
     index: z
       .enum(GEMEINDEN_INDEX_VALUES)
       .optional()
@@ -1144,9 +1158,13 @@ Example queries:
       ),
     fassung_vom: DateSchema.optional().describe('Historical version date (YYYY-MM-DD, Gr only)'),
     // Parameters for GrA application
-    bezirk: z.string().optional().describe('District name (GrA only, e.g., "Bregenz")'),
-    gemeindeverband: z.string().optional().describe('Municipal association name (GrA only)'),
-    kundmachungsnummer: z.string().optional().describe('Announcement number (GrA only)'),
+    bezirk: z.string().max(200).optional().describe('District name (GrA only, e.g., "Bregenz")'),
+    gemeindeverband: z
+      .string()
+      .max(200)
+      .optional()
+      .describe('Municipal association name (GrA only)'),
+    kundmachungsnummer: z.string().max(100).optional().describe('Announcement number (GrA only)'),
     kundmachungsdatum_von: DateSchema.optional().describe(
       'Announcement date from (YYYY-MM-DD, GrA only)',
     ),
@@ -1286,8 +1304,8 @@ Example queries:
       .describe(
         'Collection to search - "PruefGewO" (trade exams), "Avsv" (social insurance), "Spg" (health plans), "Avn" (veterinary notices), "KmGer" (court announcements), "Upts" (party transparency), "Mrp" (cabinet protocols), "Erlaesse" (decrees)',
       ),
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in titles'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in titles'),
     datum_von: DateSchema.optional().describe('Date from (YYYY-MM-DD)'),
     datum_bis: DateSchema.optional().describe('Date to (YYYY-MM-DD)'),
     // Common parameters
@@ -1300,17 +1318,23 @@ Example queries:
     sortierung_richtung: z.enum(['Ascending', 'Descending']).optional().describe('Sort direction'),
     geschaeftszahl: z
       .string()
+      .max(200)
       .optional()
       .describe('File number/Aktenzeichen (for Mrp, Upts, KmGer)'),
-    norm: z.string().optional().describe('Legal norm reference (for Erlaesse, Upts)'),
+    norm: z.string().max(500).optional().describe('Legal norm reference (for Erlaesse, Upts)'),
     fassung_vom: DateSchema.optional().describe(
       'Historical version date (YYYY-MM-DD, for Erlaesse)',
     ),
     // Mrp-specific parameters
-    einbringer: z.string().optional().describe('Submitter (Mrp only, e.g., ministry abbreviation)'),
-    sitzungsnummer: z.string().optional().describe('Session number (Mrp only)'),
+    einbringer: z
+      .string()
+      .max(200)
+      .optional()
+      .describe('Submitter (Mrp only, e.g., ministry abbreviation)'),
+    sitzungsnummer: z.string().max(50).optional().describe('Session number (Mrp only)'),
     gesetzgebungsperiode: z
       .string()
+      .max(10)
       .optional()
       .describe("Legislative period (Mrp only, e.g., '27')"),
     // Erlaesse-specific parameters
@@ -1318,8 +1342,8 @@ Example queries:
       .enum(BUNDESMINISTERIEN)
       .optional()
       .describe('Federal ministry (Erlaesse only)'),
-    abteilung: z.string().optional().describe('Department/division (Erlaesse only)'),
-    fundstelle: z.string().optional().describe('Source reference (Erlaesse only)'),
+    abteilung: z.string().max(200).optional().describe('Department/division (Erlaesse only)'),
+    fundstelle: z.string().max(200).optional().describe('Source reference (Erlaesse only)'),
     // Upts-specific parameters
     partei: z.enum(UPTS_PARTEIEN).optional().describe('Political party (Upts only)'),
     // KmGer-specific parameters
@@ -1327,22 +1351,23 @@ Example queries:
       .enum(KMGER_TYP_VALUES)
       .optional()
       .describe('Announcement type (KmGer only) - Geschaeftsordnung, Geschaeftsverteilung'),
-    gericht: z.string().optional().describe('Court name (KmGer only)'),
+    gericht: z.string().max(200).optional().describe('Court name (KmGer only)'),
     // Avsv-specific parameters
     dokumentart: z
       .string()
+      .max(200)
       .optional()
       .describe('Document type search (Avsv only) - free text search expression'),
     urheber: z.enum(AVSV_URHEBER_VALUES).optional().describe('Author/institution (Avsv only)'),
-    avsvnummer: z.string().optional().describe('AVSV number (Avsv only)'),
+    avsvnummer: z.string().max(100).optional().describe('AVSV number (Avsv only)'),
     // Avn-specific parameters
-    avnnummer: z.string().optional().describe('AVN number (Avn only)'),
+    avnnummer: z.string().max(100).optional().describe('AVN number (Avn only)'),
     avn_typ: z
       .enum(AVN_TYP_VALUES)
       .optional()
       .describe('Notice type (Avn only) - Kundmachung, Verordnung, Erlass'),
     // Spg-specific parameters
-    spgnummer: z.string().optional().describe('SPG number (Spg only)'),
+    spgnummer: z.string().max(100).optional().describe('SPG number (Spg only)'),
     osg_typ: z
       .enum(SPG_OSG_TYP_VALUES)
       .optional()
@@ -1351,7 +1376,7 @@ Example queries:
       .enum(SPG_RSG_TYP_VALUES)
       .optional()
       .describe('Regional health structure plan type (Spg only) - RSG, RSG - Großgeräteplan'),
-    rsg_land: z.string().optional().describe('Federal state for RSG (Spg only)'),
+    rsg_land: z.string().max(100).optional().describe('Federal state for RSG (Spg only)'),
     // PruefGewO-specific parameters
     pruefgewo_typ: z
       .enum(PRUEFGEWO_TYP_VALUES)
@@ -1638,13 +1663,13 @@ Example queries:
   - kundmachungsnummer="25" -> Search by publication number
   - kundmachungsdatum_von="2024-01-01", kundmachungsdatum_bis="2024-12-31" -> Date range`,
   {
-    suchworte: z.string().optional().describe('Full-text search terms'),
-    titel: z.string().optional().describe('Search in title'),
+    suchworte: z.string().max(1000).optional().describe('Full-text search terms'),
+    titel: z.string().max(500).optional().describe('Search in title'),
     bundesland: z
       .enum(VALID_VBL_BUNDESLAENDER)
       .optional()
       .describe('Filter by state (currently only Tirol has data)'),
-    kundmachungsnummer: z.string().optional().describe('Publication number'),
+    kundmachungsnummer: z.string().max(100).optional().describe('Publication number'),
     kundmachungsdatum_von: DateSchema.optional().describe('Publication date from (YYYY-MM-DD)'),
     kundmachungsdatum_bis: DateSchema.optional().describe('Publication date to (YYYY-MM-DD)'),
     seite: z.number().default(1).describe('Page number (default: 1)'),

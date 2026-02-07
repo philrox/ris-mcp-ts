@@ -72,23 +72,23 @@ Aktueller `npm audit` Output (6 Vulnerabilities):
 | `hono` (transitive)                | moderate - XSS, Cache, IP Spoofing | `npm audit fix`                      |
 | `esbuild`/`vite`/`vitest` (dev)    | moderate - Dev server requests     | `npm audit fix --force` → vitest 4.x |
 
-- [ ] `npm audit fix` ausführen (SDK + hono Fixes, non-breaking)
-- [ ] `vitest` auf v4 updaten (breaking change, Tests ggf. anpassen)
-- [ ] `npm audit` danach nochmal prüfen → Ziel: 0 Vulnerabilities
+- [x] `npm audit fix` ausführen (SDK + hono Fixes, non-breaking)
+- [x] `vitest` auf v4 updaten (breaking change, Tests ggf. anpassen)
+- [x] `npm audit` danach nochmal prüfen → Ziel: 0 Vulnerabilities
 - [ ] Regelmäßiges Audit via GitHub Dependabot (siehe Phase 4)
 
 ### 2.2 Code Security Review
 
-- [ ] **Input Validation prüfen:** Alle 12 Tools nutzen Zod-Schemas → gut. Prüfen ob die Schemas streng genug sind (z.B. max-length auf Strings)
-- [ ] **URL-Validation in `ris_dokument`:** Prüfen dass nur URLs zu `data.bka.gv.at` und `www.ris.bka.gv.at` akzeptiert werden (SSRF-Schutz)
-- [ ] **Parameter Injection:** Prüfen ob User-Input korrekt URL-encoded wird bevor es an die RIS API geht
-- [ ] **Error Messages:** Sicherstellen dass keine internen Pfade oder sensiblen Infos in Fehlermeldungen leaken
-- [ ] **Cheerio (HTML Parsing):** Prüfen ob HTML-Content von der API sicher gehandhabt wird
-- [ ] **No Secrets:** Bestätigen dass keine API-Keys, Tokens oder Credentials im Code sind (ist eine öffentliche API, sollte clean sein)
+- [x] **Input Validation prüfen:** Alle 12 Tools nutzen Zod-Schemas → gut. Prüfen ob die Schemas streng genug sind (z.B. max-length auf Strings)
+- [x] **URL-Validation in `ris_dokument`:** Prüfen dass nur URLs zu `data.bka.gv.at` und `www.ris.bka.gv.at` akzeptiert werden (SSRF-Schutz)
+- [x] **Parameter Injection:** Prüfen ob User-Input korrekt URL-encoded wird bevor es an die RIS API geht
+- [x] **Error Messages:** Sicherstellen dass keine internen Pfade oder sensiblen Infos in Fehlermeldungen leaken
+- [x] **Cheerio (HTML Parsing):** Prüfen ob HTML-Content von der API sicher gehandhabt wird
+- [x] **No Secrets:** Bestätigen dass keine API-Keys, Tokens oder Credentials im Code sind (ist eine öffentliche API, sollte clean sein)
 
 ### 2.3 SECURITY.md erstellen
 
-- [ ] `SECURITY.md` erstellen mit:
+- [x] `SECURITY.md` erstellen mit:
   - Responsible Disclosure Policy
   - Kontakt für Security Issues (E-Mail)
   - Supported Versions
@@ -346,11 +346,11 @@ Empfohlene Reihenfolge für die Umsetzung:
 
 Absolute Minimum-Anforderungen bevor der erste Public Release:
 
-- [ ] 0 npm audit Vulnerabilities
+- [x] 0 npm audit Vulnerabilities
 - [ ] LICENSE Datei (MIT)
 - [ ] README.md auf Englisch mit Install-Anleitung
 - [ ] CI Pipeline (GitHub Actions)
-- [ ] Prettier + ESLint funktionieren und formatieren den Code
-- [ ] `npm run check` läuft fehlerfrei durch
+- [x] Prettier + ESLint funktionieren und formatieren den Code
+- [x] `npm run check` läuft fehlerfrei durch
 - [ ] `npm publish` funktioniert
-- [ ] Alle 524 Tests grün
+- [x] Alle 1070 Tests grün
