@@ -100,32 +100,32 @@ Aktueller `npm audit` Output (6 Vulnerabilities):
 
 ### 3.1 Test Coverage messen
 
-- [ ] `@vitest/coverage-v8` installieren
-- [ ] Coverage Script ergänzen: `"test:coverage": "vitest run --coverage"`
-- [ ] Vitest Config um Coverage-Konfiguration erweitern
-- [ ] Coverage Thresholds setzen (Ziel: >80% Statements)
+- [x] `@vitest/coverage-v8` installieren
+- [x] Coverage Script ergänzen: `"test:coverage": "vitest run --coverage"`
+- [x] Vitest Config um Coverage-Konfiguration erweitern
+- [x] Coverage Thresholds setzen (Ziel: >80% Statements)
 - [ ] Coverage Report im CI generieren
 
 ### 3.2 Integration Tests
 
 Aktuell: Alle Tests nutzen Mocks. Ergänzen:
 
-- [ ] Integration Test Suite erstellen (`src/__tests__/integration/`)
-- [ ] Smoke Tests gegen die echte RIS API (opt-in, nicht im Standard-Testlauf):
+- [x] Integration Test Suite erstellen (`src/__tests__/integration/`)
+- [x] Smoke Tests gegen die echte RIS API (opt-in, nicht im Standard-Testlauf):
   - `ris_bundesrecht` mit `titel="ABGB"` → bekommt Ergebnisse
   - `ris_judikatur` mit `gericht="Justiz"` → bekommt Ergebnisse
   - `ris_dokument` mit bekannter `dokumentnummer` → bekommt Volltext
-- [ ] npm Script: `"test:integration": "vitest run --config vitest.integration.config.ts"`
+- [x] npm Script: `"test:integration": "vitest run --config vitest.integration.config.ts"`
 - [ ] Diese Tests nur in CI als separater Job (nicht bei jedem Push)
 
 ### 3.3 Edge Case Tests
 
-- [ ] Leere API-Responses (0 Ergebnisse)
-- [ ] Extrem lange Dokumente (>25.000 Zeichen Truncation)
-- [ ] Ungültige/malformatierte API-Responses
-- [ ] Rate Limiting / 429 Responses
-- [ ] Timeout-Szenarien
-- [ ] Nicht-existente Dokumentnummern
+- [x] Leere API-Responses (0 Ergebnisse)
+- [x] Extrem lange Dokumente (>25.000 Zeichen Truncation)
+- [x] Ungültige/malformatierte API-Responses
+- [x] Rate Limiting / 429 Responses
+- [x] Timeout-Szenarien
+- [x] Nicht-existente Dokumentnummern
 
 ---
 
