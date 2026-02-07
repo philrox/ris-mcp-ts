@@ -6,7 +6,7 @@
  * parameters and document models for representing legal documents.
  */
 
-import { z } from "zod";
+import { z } from 'zod';
 
 // =============================================================================
 // Enums
@@ -16,10 +16,10 @@ import { z } from "zod";
  * Application types for federal law searches in RIS.
  */
 export const BundesrechtApplikationSchema = z.enum([
-  "BrKons", // Consolidated federal law
-  "Begut", // Draft legislation
-  "BgblAuth", // Federal Law Gazette authentic
-  "Erv", // English translations
+  'BrKons', // Consolidated federal law
+  'Begut', // Draft legislation
+  'BgblAuth', // Federal Law Gazette authentic
+  'Erv', // English translations
 ]);
 export type BundesrechtApplikation = z.infer<typeof BundesrechtApplikationSchema>;
 
@@ -27,17 +27,17 @@ export type BundesrechtApplikation = z.infer<typeof BundesrechtApplikationSchema
  * Court types for case law searches in RIS.
  */
 export const JudikaturGerichtSchema = z.enum([
-  "Justiz", // Ordinary courts (OGH, OLG, LG, BG)
-  "Vfgh", // Constitutional Court
-  "Vwgh", // Supreme Administrative Court
-  "Bvwg", // Federal Administrative Court
-  "Lvwg", // State Administrative Courts
-  "Dsk", // Data Protection Authority
-  "AsylGH", // Asylum Court (historical, until 2013)
-  "Normenliste", // Court norm lists (judicial review)
-  "Pvak", // Personnel Representation Supervision Commission
-  "Gbk", // Equal Treatment Commission
-  "Dok", // Disciplinary Commission
+  'Justiz', // Ordinary courts (OGH, OLG, LG, BG)
+  'Vfgh', // Constitutional Court
+  'Vwgh', // Supreme Administrative Court
+  'Bvwg', // Federal Administrative Court
+  'Lvwg', // State Administrative Courts
+  'Dsk', // Data Protection Authority
+  'AsylGH', // Asylum Court (historical, until 2013)
+  'Normenliste', // Court norm lists (judicial review)
+  'Pvak', // Personnel Representation Supervision Commission
+  'Gbk', // Equal Treatment Commission
+  'Dok', // Disciplinary Commission
 ]);
 export type JudikaturGericht = z.infer<typeof JudikaturGerichtSchema>;
 
@@ -46,15 +46,15 @@ export type JudikaturGericht = z.infer<typeof JudikaturGerichtSchema>;
  * Note: Uses Umlauts (ö, ä) for display purposes.
  */
 export const BundeslandSchema = z.enum([
-  "Wien",
-  "Niederösterreich",
-  "Oberösterreich",
-  "Steiermark",
-  "Tirol",
-  "Kärnten",
-  "Salzburg",
-  "Vorarlberg",
-  "Burgenland",
+  'Wien',
+  'Niederösterreich',
+  'Oberösterreich',
+  'Steiermark',
+  'Tirol',
+  'Kärnten',
+  'Salzburg',
+  'Vorarlberg',
+  'Burgenland',
 ]);
 export type Bundesland = z.infer<typeof BundeslandSchema>;
 
@@ -63,15 +63,15 @@ export type Bundesland = z.infer<typeof BundeslandSchema>;
  * The RIS API uses the SucheIn format (e.g., Bundesland.SucheInWien=true).
  */
 export const LANDESRECHT_BUNDESLAENDER = [
-  "Wien",
-  "Niederoesterreich",
-  "Oberoesterreich",
-  "Salzburg",
-  "Tirol",
-  "Vorarlberg",
-  "Kaernten",
-  "Steiermark",
-  "Burgenland",
+  'Wien',
+  'Niederoesterreich',
+  'Oberoesterreich',
+  'Salzburg',
+  'Tirol',
+  'Vorarlberg',
+  'Kaernten',
+  'Steiermark',
+  'Burgenland',
 ] as const;
 
 export const LandesrechtBundeslandSchema = z.enum(LANDESRECHT_BUNDESLAENDER);
@@ -81,11 +81,9 @@ export type LandesrechtBundesland = z.infer<typeof LandesrechtBundeslandSchema>;
  * Date format validation schema (YYYY-MM-DD).
  * Used for date parameters in RIS API requests.
  */
-export const DateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, {
-    message: "Datum muss im Format YYYY-MM-DD sein (z.B. 2024-01-15)",
-  });
+export const DateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+  message: 'Datum muss im Format YYYY-MM-DD sein (z.B. 2024-01-15)',
+});
 
 export const OptionalDateSchema = DateSchema.optional();
 
@@ -93,17 +91,17 @@ export const OptionalDateSchema = DateSchema.optional();
  * Number of documents per page for paginated API responses.
  */
 export const DokumenteProSeiteSchema = z.enum([
-  "Ten", // 10 documents
-  "Twenty", // 20 documents
-  "Fifty", // 50 documents
-  "OneHundred", // 100 documents
+  'Ten', // 10 documents
+  'Twenty', // 20 documents
+  'Fifty', // 50 documents
+  'OneHundred', // 100 documents
 ]);
 export type DokumenteProSeite = z.infer<typeof DokumenteProSeiteSchema>;
 
 /**
  * Output format for MCP tool responses.
  */
-export const ResponseFormatSchema = z.enum(["markdown", "json"]);
+export const ResponseFormatSchema = z.enum(['markdown', 'json']);
 export type ResponseFormat = z.infer<typeof ResponseFormatSchema>;
 
 // =============================================================================
@@ -186,7 +184,7 @@ export interface RawUrls {
  */
 export interface RawContentReference {
   ContentType?: string;
-  Name?: string | { "#text"?: string };
+  Name?: string | { '#text'?: string };
   Urls?: RawUrls;
 }
 
@@ -194,9 +192,9 @@ export interface RawContentReference {
  * Raw hits info from API response.
  */
 export interface RawHitsInfo {
-  "#text"?: string | number;
-  "@pageNumber"?: string | number;
-  "@pageSize"?: string | number;
+  '#text'?: string | number;
+  '@pageNumber'?: string | number;
+  '@pageSize'?: string | number;
 }
 
 /**
@@ -284,10 +282,10 @@ export interface NormalizedSearchResults {
  */
 export function limitToDokumenteProSeite(limit: number): DokumenteProSeite {
   const mapping: Record<number, DokumenteProSeite> = {
-    10: "Ten",
-    20: "Twenty",
-    50: "Fifty",
-    100: "OneHundred",
+    10: 'Ten',
+    20: 'Twenty',
+    50: 'Fifty',
+    100: 'OneHundred',
   };
-  return mapping[limit] ?? "Twenty";
+  return mapping[limit] ?? 'Twenty';
 }

@@ -6,8 +6,9 @@
  * formatting, and document content preparation.
  */
 
-import * as cheerio from "cheerio";
-import type { Document, SearchResult } from "./types.js";
+import * as cheerio from 'cheerio';
+
+import type { Document, SearchResult } from './types.js';
 
 // =============================================================================
 // Constants
@@ -24,13 +25,13 @@ const CHARACTER_LIMIT = 25000;
  */
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) {
-    return "";
+    return '';
   }
 
   try {
     // Handle ISO format (YYYY-MM-DD)
     const datePart = dateStr.slice(0, 10);
-    const parts = datePart.split("-");
+    const parts = datePart.split('-');
     if (parts.length === 3) {
       const [year, month, day] = parts;
       return `${day}.${month}.${year}`;
@@ -50,24 +51,24 @@ export function formatDate(dateStr: string | null | undefined): string {
  */
 export function htmlToText(htmlContent: string): string {
   if (!htmlContent) {
-    return "";
+    return '';
   }
 
   const $ = cheerio.load(htmlContent);
 
   // Remove script, style, and head elements
-  $("script, style, head").remove();
+  $('script, style, head').remove();
 
   // Process the body or entire document
-  let text = $("body").length > 0 ? $("body").text() : $.text();
+  let text = $('body').length > 0 ? $('body').text() : $.text();
 
   // Clean up whitespace
   text = text
-    .replace(/\n{3,}/g, "\n\n") // Normalize multiple newlines
-    .replace(/[ \t]+/g, " ") // Normalize multiple spaces
-    .split("\n")
+    .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
+    .replace(/[ \t]+/g, ' ') // Normalize multiple spaces
+    .split('\n')
     .map((line) => line.trim())
-    .join("\n")
+    .join('\n')
     .trim();
 
   return text;
@@ -99,13 +100,13 @@ interface CitationData {
  */
 export function formatCitation(doc: Document | CitationData): string {
   const data = doc as CitationData;
-  const applikation = data.applikation ?? "";
+  const applikation = data.applikation ?? '';
   const citationData = data.citation ?? {};
-  const titel = data.titel ?? "";
-  const kurztitel = data.kurztitel ?? citationData.kurztitel ?? "";
+  const titel = data.titel ?? '';
+  const kurztitel = data.kurztitel ?? citationData.kurztitel ?? '';
 
   // Handle court decisions (Judikatur)
-  if (["Justiz", "Vfgh", "Vwgh", "Bvwg", "Lvwg", "Dsk"].includes(applikation)) {
+  if (['Justiz', 'Vfgh', 'Vwgh', 'Bvwg', 'Lvwg', 'Dsk'].includes(applikation)) {
     return formatCourtCitation(data, applikation, titel);
   }
 
@@ -118,18 +119,18 @@ export function formatCitation(doc: Document | CitationData): string {
  */
 function formatCourtCitation(data: CitationData, applikation: string, titel: string): string {
   const courtPrefixes: Record<string, string> = {
-    Justiz: "",
-    Vfgh: "VfGH",
-    Vwgh: "VwGH",
-    Bvwg: "BVwG",
-    Lvwg: "LVwG",
-    Dsk: "DSK",
+    Justiz: '',
+    Vfgh: 'VfGH',
+    Vwgh: 'VwGH',
+    Bvwg: 'BVwG',
+    Lvwg: 'LVwG',
+    Dsk: 'DSK',
   };
 
-  const dokumentnummer = data.dokumentnummer ?? "";
+  const dokumentnummer = data.dokumentnummer ?? '';
 
   // For ordinary courts
-  if (applikation === "Justiz") {
+  if (applikation === 'Justiz') {
     // Title often contains "OGH 5 Ob 123/23t" or similar
     const match = titel.match(/(OGH|OLG|LG|BG)\s*[,:]?\s*(\d+\s*\w+\s*\d+\/\d+\w?)/i);
     if (match) {
@@ -148,7 +149,7 @@ function formatCourtCitation(data: CitationData, applikation: string, titel: str
   }
 
   // For VfGH, VwGH etc.
-  const prefix = courtPrefixes[applikation] ?? "";
+  const prefix = courtPrefixes[applikation] ?? '';
   if (prefix) {
     const dateMatch = titel.match(/(\d{1,2}\.\d{1,2}\.\d{4})/);
     const caseMatch = titel.match(/([EGUBVW]\s*\d+\/\d+)/i);
@@ -174,10 +175,10 @@ function formatCourtCitation(data: CitationData, applikation: string, titel: str
 function formatLawCitation(
   data: CitationData,
   kurztitel: string | null | undefined,
-  citationData: CitationData["citation"]
+  citationData: CitationData['citation'],
 ): string {
-  const paragraph = citationData?.paragraph ?? "";
-  const kundmachungsorgan = citationData?.kundmachungsorgan ?? "";
+  const paragraph = citationData?.paragraph ?? '';
+  const kundmachungsorgan = citationData?.kundmachungsorgan ?? '';
 
   const parts: string[] = [];
 
@@ -194,10 +195,10 @@ function formatLawCitation(
   }
 
   if (parts.length > 0) {
-    return parts.join(" ");
+    return parts.join(' ');
   }
 
-  return data.titel ?? data.dokumentnummer ?? "";
+  return data.titel ?? data.dokumentnummer ?? '';
 }
 
 // =============================================================================
@@ -225,11 +226,11 @@ function documentToDict(doc: Document): Record<string, unknown> {
  */
 export function formatSearchResults(
   results: SearchResult | Record<string, unknown>,
-  format: "markdown" | "json" = "markdown"
+  format: 'markdown' | 'json' = 'markdown',
 ): string {
   let data: Record<string, unknown>;
 
-  if ("documents" in results && Array.isArray(results.documents)) {
+  if ('documents' in results && Array.isArray(results.documents)) {
     // It's a SearchResult
     const sr = results as SearchResult;
     data = {
@@ -243,7 +244,7 @@ export function formatSearchResults(
     data = results as Record<string, unknown>;
   }
 
-  if (format === "json") {
+  if (format === 'json') {
     return JSON.stringify(data, null, 2);
   }
 
@@ -266,11 +267,11 @@ function formatSearchResultsMarkdown(data: Record<string, unknown>): string {
 
   // Summary line
   lines.push(`**Gefunden: ${totalHits} Treffer** (Seite ${page} von ${totalPages})`);
-  lines.push("");
+  lines.push('');
 
   if (documents.length === 0) {
-    lines.push("_Keine Dokumente gefunden._");
-    return lines.join("\n");
+    lines.push('_Keine Dokumente gefunden._');
+    return lines.join('\n');
   }
 
   // Format each document
@@ -280,7 +281,7 @@ function formatSearchResultsMarkdown(data: Record<string, unknown>): string {
     lines.push(`### ${i + 1}. ${citation}`);
 
     // Title (if different from citation)
-    const titel = (doc.titel as string) ?? "";
+    const titel = (doc.titel as string) ?? '';
     if (titel && titel !== citation) {
       lines.push(`**${titel}**`);
     }
@@ -303,7 +304,7 @@ function formatSearchResultsMarkdown(data: Record<string, unknown>): string {
 
     // Ausserkrafttreten
     const ausserkrafttreten = citationData.ausserkrafttreten as string | undefined;
-    if (ausserkrafttreten && ausserkrafttreten !== "9999-12-31") {
+    if (ausserkrafttreten && ausserkrafttreten !== '9999-12-31') {
       metadataParts.push(`Außer Kraft: ${formatDate(ausserkrafttreten)}`);
     }
 
@@ -314,27 +315,27 @@ function formatSearchResultsMarkdown(data: Record<string, unknown>): string {
     }
 
     if (metadataParts.length > 0) {
-      lines.push(metadataParts.join("  \n"));
+      lines.push(metadataParts.join('  \n'));
     }
 
     // Document number for retrieval
-    const dokumentnummer = (doc.dokumentnummer as string) ?? "";
+    const dokumentnummer = (doc.dokumentnummer as string) ?? '';
     if (dokumentnummer) {
       lines.push(`\`Dokumentnummer: ${dokumentnummer}\``);
     }
 
-    lines.push("");
+    lines.push('');
   }
 
   // Pagination hint
   if (hasMore) {
-    lines.push("---");
+    lines.push('---');
     lines.push(
-      `_Weitere Treffer verfügbar. Verwende \`seite: ${page + 1}\` für die nächste Seite._`
+      `_Weitere Treffer verfügbar. Verwende \`seite: ${page + 1}\` für die nächste Seite._`,
     );
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 // =============================================================================
@@ -368,16 +369,16 @@ export interface DocumentMetadata {
 export function formatDocument(
   content: string,
   metadata: DocumentMetadata,
-  format: "markdown" | "json" = "markdown"
+  format: 'markdown' | 'json' = 'markdown',
 ): string {
-  if (format === "json") {
+  if (format === 'json') {
     return JSON.stringify(
       {
         metadata,
         content: htmlToText(content),
       },
       null,
-      2
+      2,
     );
   }
 
@@ -393,16 +394,16 @@ function formatDocumentMarkdown(content: string, metadata: DocumentMetadata): st
   // Citation header
   const citation = formatCitation(metadata as CitationData);
   lines.push(`# ${citation}`);
-  lines.push("");
+  lines.push('');
 
   // Metadata block
-  lines.push("## Dokumentinformation");
-  lines.push("");
+  lines.push('## Dokumentinformation');
+  lines.push('');
 
   const citationData = metadata.citation ?? {};
 
   // Full title
-  const langtitel = citationData.langtitel ?? metadata.titel ?? "";
+  const langtitel = citationData.langtitel ?? metadata.titel ?? '';
   if (langtitel) {
     lines.push(`**Titel:** ${langtitel}`);
   }
@@ -426,7 +427,7 @@ function formatDocumentMarkdown(content: string, metadata: DocumentMetadata): st
   }
 
   const ausserkrafttreten = citationData.ausserkrafttreten;
-  if (ausserkrafttreten && ausserkrafttreten !== "9999-12-31") {
+  if (ausserkrafttreten && ausserkrafttreten !== '9999-12-31') {
     lines.push(`**Außer Kraft:** ${formatDate(ausserkrafttreten)}`);
   }
 
@@ -437,7 +438,7 @@ function formatDocumentMarkdown(content: string, metadata: DocumentMetadata): st
   }
 
   // Document number
-  const dokumentnummer = metadata.dokumentnummer ?? "";
+  const dokumentnummer = metadata.dokumentnummer ?? '';
   if (dokumentnummer) {
     lines.push(`**Dokumentnummer:** \`${dokumentnummer}\``);
   }
@@ -453,16 +454,16 @@ function formatDocumentMarkdown(content: string, metadata: DocumentMetadata): st
     lines.push(`**Gesamte Rechtsvorschrift:** [${gesamteUrl}](${gesamteUrl})`);
   }
 
-  lines.push("");
+  lines.push('');
 
   // Content
-  lines.push("## Inhalt");
-  lines.push("");
+  lines.push('## Inhalt');
+  lines.push('');
 
   const cleanContent = htmlToText(content);
   lines.push(cleanContent);
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 // =============================================================================
@@ -486,16 +487,16 @@ export function truncateResponse(text: string, limit = CHARACTER_LIMIT): string 
   let truncated = text.slice(0, truncateAt);
 
   // Find last paragraph break
-  const lastPara = truncated.lastIndexOf("\n\n");
+  const lastPara = truncated.lastIndexOf('\n\n');
   if (lastPara > truncateAt * 0.7) {
     truncated = truncated.slice(0, lastPara);
   } else {
     // Try sentence boundary
     const lastSentence = Math.max(
-      truncated.lastIndexOf(". "),
-      truncated.lastIndexOf(".\n"),
-      truncated.lastIndexOf("? "),
-      truncated.lastIndexOf("! ")
+      truncated.lastIndexOf('. '),
+      truncated.lastIndexOf('.\n'),
+      truncated.lastIndexOf('? '),
+      truncated.lastIndexOf('! '),
     );
     if (lastSentence > truncateAt * 0.8) {
       truncated = truncated.slice(0, lastSentence + 1);

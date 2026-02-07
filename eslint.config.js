@@ -1,4 +1,6 @@
 import eslint from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier";
+import importPlugin from "eslint-plugin-import-x";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -12,6 +14,9 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: {
+      "import-x": importPlugin,
+    },
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -19,6 +24,24 @@ export default tseslint.config(
       ],
       "@typescript-eslint/explicit-function-return-type": "warn",
       "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/consistent-type-imports": "warn",
+      "import-x/order": [
+        "error",
+        {
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+          ],
+          "newlines-between": "always",
+          alphabetize: { order: "asc" },
+        },
+      ],
+      "import-x/newline-after-import": "error",
+      "import-x/no-duplicates": "error",
     },
   },
   {
@@ -28,6 +51,7 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["dist/**", "node_modules/**", "*.js"],
-  }
+    ignores: ["dist/**", "node_modules/**", "*.js", "*.mjs"],
+  },
+  eslintConfigPrettier,
 );

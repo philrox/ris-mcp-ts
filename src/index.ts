@@ -6,8 +6,9 @@
  * with Claude Desktop or other MCP clients.
  */
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { server } from "./server.js";
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+import { server } from './server.js';
 
 /**
  * Main function to start the MCP server.
@@ -18,6 +19,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error("Failed to start RIS MCP server:", error);
+  console.error('Failed to start RIS MCP server:', error);
   process.exit(1);
 });

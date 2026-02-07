@@ -8,7 +8,12 @@
  * API Documentation: https://data.bka.gv.at/ris/api/v2.6/
  */
 
-import type { NormalizedSearchResults, RawApiResponse, RawDocumentReference, RawHitsInfo } from "./types.js";
+import type {
+  NormalizedSearchResults,
+  RawApiResponse,
+  RawDocumentReference,
+  RawHitsInfo,
+} from './types.js';
 
 // =============================================================================
 // Custom Errors
@@ -22,7 +27,7 @@ export class RISAPIError extends Error {
 
   constructor(message: string, statusCode?: number) {
     super(message);
-    this.name = "RISAPIError";
+    this.name = 'RISAPIError';
     this.statusCode = statusCode;
   }
 }
@@ -31,9 +36,9 @@ export class RISAPIError extends Error {
  * Raised when a request to the RIS API times out.
  */
 export class RISTimeoutError extends RISAPIError {
-  constructor(message = "Request to RIS API timed out") {
+  constructor(message = 'Request to RIS API timed out') {
     super(message);
-    this.name = "RISTimeoutError";
+    this.name = 'RISTimeoutError';
   }
 }
 
@@ -45,7 +50,7 @@ export class RISParsingError extends RISAPIError {
 
   constructor(message: string, originalError?: Error) {
     super(message);
-    this.name = "RISParsingError";
+    this.name = 'RISParsingError';
     this.originalError = originalError;
   }
 }
@@ -54,7 +59,7 @@ export class RISParsingError extends RISAPIError {
 // RIS Client
 // =============================================================================
 
-const BASE_URL = "https://data.bka.gv.at/ris/api/v2.6/";
+const BASE_URL = 'https://data.bka.gv.at/ris/api/v2.6/';
 const DEFAULT_TIMEOUT = 30000; // 30 seconds in milliseconds
 
 /**
@@ -80,7 +85,7 @@ function parseJsonResponse(jsonContent: string): RawApiResponse {
   } catch (e) {
     throw new RISParsingError(
       `Failed to parse JSON response: ${e instanceof Error ? e.message : String(e)}`,
-      e instanceof Error ? e : undefined
+      e instanceof Error ? e : undefined,
     );
   }
 }
@@ -99,11 +104,11 @@ function extractSearchResults(parsedResponse: RawApiResponse): NormalizedSearchR
   let pageNumber = 1;
   let pageSize = 10;
 
-  if (typeof hitsInfo === "object" && hitsInfo !== null) {
+  if (typeof hitsInfo === 'object' && hitsInfo !== null) {
     const hitsObj = hitsInfo as RawHitsInfo;
-    totalHits = Number(hitsObj["#text"] ?? 0);
-    pageNumber = Number(hitsObj["@pageNumber"] ?? 1);
-    pageSize = Number(hitsObj["@pageSize"] ?? 10);
+    totalHits = Number(hitsObj['#text'] ?? 0);
+    pageNumber = Number(hitsObj['@pageNumber'] ?? 1);
+    pageSize = Number(hitsObj['@pageSize'] ?? 10);
   } else if (hitsInfo !== undefined && hitsInfo !== null) {
     totalHits = Number(hitsInfo);
   }
@@ -132,7 +137,7 @@ function extractSearchResults(parsedResponse: RawApiResponse): NormalizedSearchR
 async function request(
   endpoint: string,
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
   const url = new URL(endpoint, BASE_URL);
   url.search = buildParams(params).toString();
@@ -142,9 +147,9 @@ async function request(
 
   try {
     const response = await fetch(url.toString(), {
-      method: "GET",
+      method: 'GET',
       headers: {
-        Accept: "application/json",
+        Accept: 'application/json',
       },
       signal: controller.signal,
     });
@@ -155,7 +160,7 @@ async function request(
       const text = await response.text();
       throw new RISAPIError(
         `HTTP error ${response.status} for ${endpoint}: ${text}`,
-        response.status
+        response.status,
       );
     }
 
@@ -170,10 +175,8 @@ async function request(
     }
 
     if (e instanceof Error) {
-      if (e.name === "AbortError") {
-        throw new RISTimeoutError(
-          `Request to ${endpoint} timed out after ${timeout}ms`
-        );
+      if (e.name === 'AbortError') {
+        throw new RISTimeoutError(`Request to ${endpoint} timed out after ${timeout}ms`);
       }
       throw new RISAPIError(`Request failed for ${endpoint}: ${e.message}`);
     }
@@ -187,9 +190,9 @@ async function request(
  */
 export async function searchBundesrecht(
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
-  return request("Bundesrecht", params, timeout);
+  return request('Bundesrecht', params, timeout);
 }
 
 /**
@@ -197,9 +200,9 @@ export async function searchBundesrecht(
  */
 export async function searchLandesrecht(
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
-  return request("Landesrecht", params, timeout);
+  return request('Landesrecht', params, timeout);
 }
 
 /**
@@ -207,9 +210,9 @@ export async function searchLandesrecht(
  */
 export async function searchJudikatur(
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
-  return request("Judikatur", params, timeout);
+  return request('Judikatur', params, timeout);
 }
 
 /**
@@ -217,9 +220,9 @@ export async function searchJudikatur(
  */
 export async function searchBezirke(
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
-  return request("Bezirke", params, timeout);
+  return request('Bezirke', params, timeout);
 }
 
 /**
@@ -227,9 +230,9 @@ export async function searchBezirke(
  */
 export async function searchGemeinden(
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
-  return request("Gemeinden", params, timeout);
+  return request('Gemeinden', params, timeout);
 }
 
 /**
@@ -237,9 +240,9 @@ export async function searchGemeinden(
  */
 export async function searchSonstige(
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
-  return request("Sonstige", params, timeout);
+  return request('Sonstige', params, timeout);
 }
 
 /**
@@ -247,24 +250,21 @@ export async function searchSonstige(
  */
 export async function searchHistory(
   params: Record<string, unknown>,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<NormalizedSearchResults> {
-  return request("History", params, timeout);
+  return request('History', params, timeout);
 }
 
 /**
  * Fetch HTML content from a document URL.
  */
-export async function getDocumentContent(
-  url: string,
-  timeout = DEFAULT_TIMEOUT
-): Promise<string> {
+export async function getDocumentContent(url: string, timeout = DEFAULT_TIMEOUT): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
     const response = await fetch(url, {
-      method: "GET",
+      method: 'GET',
       signal: controller.signal,
     });
 
@@ -274,7 +274,7 @@ export async function getDocumentContent(
       const text = await response.text();
       throw new RISAPIError(
         `HTTP error ${response.status} fetching document: ${text}`,
-        response.status
+        response.status,
       );
     }
 
@@ -287,10 +287,8 @@ export async function getDocumentContent(
     }
 
     if (e instanceof Error) {
-      if (e.name === "AbortError") {
-        throw new RISTimeoutError(
-          `Request to document URL timed out after ${timeout}ms`
-        );
+      if (e.name === 'AbortError') {
+        throw new RISTimeoutError(`Request to document URL timed out after ${timeout}ms`);
       }
       throw new RISAPIError(`Request failed fetching document: ${e.message}`);
     }
@@ -329,53 +327,53 @@ export function isValidDokumentnummer(dokumentnummer: string): boolean {
  */
 const DOCUMENT_URL_PATTERNS: Record<string, string> = {
   // Bundesrecht (Federal Law)
-  NOR: "https://ris.bka.gv.at/Dokumente/Bundesnormen/{dokumentnummer}/{dokumentnummer}.html",
+  NOR: 'https://ris.bka.gv.at/Dokumente/Bundesnormen/{dokumentnummer}/{dokumentnummer}.html',
 
   // Landesrecht (State Law) - one prefix per state
-  LBG: "https://ris.bka.gv.at/Dokumente/LrBgld/{dokumentnummer}/{dokumentnummer}.html",
-  LKT: "https://ris.bka.gv.at/Dokumente/LrK/{dokumentnummer}/{dokumentnummer}.html",
-  LNO: "https://ris.bka.gv.at/Dokumente/LrNO/{dokumentnummer}/{dokumentnummer}.html",
-  LOO: "https://ris.bka.gv.at/Dokumente/LrOO/{dokumentnummer}/{dokumentnummer}.html",
-  LSB: "https://ris.bka.gv.at/Dokumente/LrSbg/{dokumentnummer}/{dokumentnummer}.html",
-  LST: "https://ris.bka.gv.at/Dokumente/LrStmk/{dokumentnummer}/{dokumentnummer}.html",
-  LTI: "https://ris.bka.gv.at/Dokumente/LrT/{dokumentnummer}/{dokumentnummer}.html",
-  LVB: "https://ris.bka.gv.at/Dokumente/LrVbg/{dokumentnummer}/{dokumentnummer}.html",
-  LWI: "https://ris.bka.gv.at/Dokumente/LrW/{dokumentnummer}/{dokumentnummer}.html",
+  LBG: 'https://ris.bka.gv.at/Dokumente/LrBgld/{dokumentnummer}/{dokumentnummer}.html',
+  LKT: 'https://ris.bka.gv.at/Dokumente/LrK/{dokumentnummer}/{dokumentnummer}.html',
+  LNO: 'https://ris.bka.gv.at/Dokumente/LrNO/{dokumentnummer}/{dokumentnummer}.html',
+  LOO: 'https://ris.bka.gv.at/Dokumente/LrOO/{dokumentnummer}/{dokumentnummer}.html',
+  LSB: 'https://ris.bka.gv.at/Dokumente/LrSbg/{dokumentnummer}/{dokumentnummer}.html',
+  LST: 'https://ris.bka.gv.at/Dokumente/LrStmk/{dokumentnummer}/{dokumentnummer}.html',
+  LTI: 'https://ris.bka.gv.at/Dokumente/LrT/{dokumentnummer}/{dokumentnummer}.html',
+  LVB: 'https://ris.bka.gv.at/Dokumente/LrVbg/{dokumentnummer}/{dokumentnummer}.html',
+  LWI: 'https://ris.bka.gv.at/Dokumente/LrW/{dokumentnummer}/{dokumentnummer}.html',
 
   // Judikatur (Case Law)
-  JWR: "https://ris.bka.gv.at/Dokumente/Vwgh/{dokumentnummer}/{dokumentnummer}.html",
-  JFR: "https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html",
-  JFT: "https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html",
-  JWT: "https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html",
-  JJR: "https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html",
-  BVWG: "https://ris.bka.gv.at/Dokumente/Bvwg/{dokumentnummer}/{dokumentnummer}.html",
-  LVWG: "https://ris.bka.gv.at/Dokumente/Lvwg/{dokumentnummer}/{dokumentnummer}.html",
-  DSB: "https://ris.bka.gv.at/Dokumente/Dsk/{dokumentnummer}/{dokumentnummer}.html",
-  GBK: "https://ris.bka.gv.at/Dokumente/Gbk/{dokumentnummer}/{dokumentnummer}.html",
-  PVAK: "https://ris.bka.gv.at/Dokumente/Pvak/{dokumentnummer}/{dokumentnummer}.html",
-  ASYLGH: "https://ris.bka.gv.at/Dokumente/AsylGH/{dokumentnummer}/{dokumentnummer}.html",
+  JWR: 'https://ris.bka.gv.at/Dokumente/Vwgh/{dokumentnummer}/{dokumentnummer}.html',
+  JFR: 'https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html',
+  JFT: 'https://ris.bka.gv.at/Dokumente/Vfgh/{dokumentnummer}/{dokumentnummer}.html',
+  JWT: 'https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html',
+  JJR: 'https://ris.bka.gv.at/Dokumente/Justiz/{dokumentnummer}/{dokumentnummer}.html',
+  BVWG: 'https://ris.bka.gv.at/Dokumente/Bvwg/{dokumentnummer}/{dokumentnummer}.html',
+  LVWG: 'https://ris.bka.gv.at/Dokumente/Lvwg/{dokumentnummer}/{dokumentnummer}.html',
+  DSB: 'https://ris.bka.gv.at/Dokumente/Dsk/{dokumentnummer}/{dokumentnummer}.html',
+  GBK: 'https://ris.bka.gv.at/Dokumente/Gbk/{dokumentnummer}/{dokumentnummer}.html',
+  PVAK: 'https://ris.bka.gv.at/Dokumente/Pvak/{dokumentnummer}/{dokumentnummer}.html',
+  ASYLGH: 'https://ris.bka.gv.at/Dokumente/AsylGH/{dokumentnummer}/{dokumentnummer}.html',
 
   // Bundesgesetzblätter (Federal Law Gazettes)
-  BGBLA: "https://ris.bka.gv.at/Dokumente/BgblAuth/{dokumentnummer}/{dokumentnummer}.html",
-  BGBL: "https://ris.bka.gv.at/Dokumente/BgblAlt/{dokumentnummer}/{dokumentnummer}.html",
-  BGBLPDF: "https://ris.bka.gv.at/Dokumente/BgblPdf/{dokumentnummer}/{dokumentnummer}.html",
+  BGBLA: 'https://ris.bka.gv.at/Dokumente/BgblAuth/{dokumentnummer}/{dokumentnummer}.html',
+  BGBL: 'https://ris.bka.gv.at/Dokumente/BgblAlt/{dokumentnummer}/{dokumentnummer}.html',
+  BGBLPDF: 'https://ris.bka.gv.at/Dokumente/BgblPdf/{dokumentnummer}/{dokumentnummer}.html',
 
   // Regierungsvorlagen (Government Bills)
-  REGV: "https://ris.bka.gv.at/Dokumente/RegV/{dokumentnummer}/{dokumentnummer}.html",
+  REGV: 'https://ris.bka.gv.at/Dokumente/RegV/{dokumentnummer}/{dokumentnummer}.html',
 
   // Bezirke (District Administrative Authorities)
-  BVB: "https://ris.bka.gv.at/Dokumente/Bvb/{dokumentnummer}/{dokumentnummer}.html",
+  BVB: 'https://ris.bka.gv.at/Dokumente/Bvb/{dokumentnummer}/{dokumentnummer}.html',
 
   // Verordnungsblätter (State Ordinance Gazettes)
-  VBL: "https://ris.bka.gv.at/Dokumente/Vbl/{dokumentnummer}/{dokumentnummer}.html",
+  VBL: 'https://ris.bka.gv.at/Dokumente/Vbl/{dokumentnummer}/{dokumentnummer}.html',
 
   // Sonstige (Miscellaneous)
-  MRP: "https://ris.bka.gv.at/Dokumente/Mrp/{dokumentnummer}/{dokumentnummer}.html",
-  ERL: "https://ris.bka.gv.at/Dokumente/Erlaesse/{dokumentnummer}/{dokumentnummer}.html",
-  PRUEF: "https://ris.bka.gv.at/Dokumente/PruefGewO/{dokumentnummer}/{dokumentnummer}.html",
-  AVSV: "https://ris.bka.gv.at/Dokumente/Avsv/{dokumentnummer}/{dokumentnummer}.html",
-  SPG: "https://ris.bka.gv.at/Dokumente/Spg/{dokumentnummer}/{dokumentnummer}.html",
-  KMGER: "https://ris.bka.gv.at/Dokumente/KmGer/{dokumentnummer}/{dokumentnummer}.html",
+  MRP: 'https://ris.bka.gv.at/Dokumente/Mrp/{dokumentnummer}/{dokumentnummer}.html',
+  ERL: 'https://ris.bka.gv.at/Dokumente/Erlaesse/{dokumentnummer}/{dokumentnummer}.html',
+  PRUEF: 'https://ris.bka.gv.at/Dokumente/PruefGewO/{dokumentnummer}/{dokumentnummer}.html',
+  AVSV: 'https://ris.bka.gv.at/Dokumente/Avsv/{dokumentnummer}/{dokumentnummer}.html',
+  SPG: 'https://ris.bka.gv.at/Dokumente/Spg/{dokumentnummer}/{dokumentnummer}.html',
+  KMGER: 'https://ris.bka.gv.at/Dokumente/KmGer/{dokumentnummer}/{dokumentnummer}.html',
 };
 
 /**
@@ -422,7 +420,7 @@ export type DirectDocumentResult =
  */
 export async function getDocumentByNumber(
   dokumentnummer: string,
-  timeout = DEFAULT_TIMEOUT
+  timeout = DEFAULT_TIMEOUT,
 ): Promise<DirectDocumentResult> {
   // Validate dokumentnummer before any URL operations
   if (!isValidDokumentnummer(dokumentnummer)) {

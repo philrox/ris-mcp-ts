@@ -14,7 +14,7 @@ import type {
   RawContentUrl,
   RawDocumentReference,
   SearchResult,
-} from "./types.js";
+} from './types.js';
 
 // =============================================================================
 // Helper Functions
@@ -28,18 +28,18 @@ export function extractText(elem: unknown): string | null {
   if (elem === null || elem === undefined) {
     return null;
   }
-  if (typeof elem === "string") {
+  if (typeof elem === 'string') {
     const trimmed = elem.trim();
     return trimmed || null;
   }
-  if (typeof elem === "object") {
+  if (typeof elem === 'object') {
     const obj = elem as Record<string, unknown>;
-    const text = obj["#text"] ?? obj["item"];
-    if (typeof text === "string") {
+    const text = obj['#text'] ?? obj['item'];
+    if (typeof text === 'string') {
       return text.trim() || null;
     }
     if (Array.isArray(text)) {
-      return text.join(", ");
+      return text.join(', ');
     }
   }
   return null;
@@ -81,10 +81,10 @@ export function extractContentUrls(contentRef: RawContentReference | undefined):
   }
 
   return {
-    html: getUrlByType(contentUrlList, "Html"),
-    xml: getUrlByType(contentUrlList, "Xml"),
-    pdf: getUrlByType(contentUrlList, "Pdf"),
-    rtf: getUrlByType(contentUrlList, "Rtf"),
+    html: getUrlByType(contentUrlList, 'Html'),
+    xml: getUrlByType(contentUrlList, 'Xml'),
+    pdf: getUrlByType(contentUrlList, 'Pdf'),
+    rtf: getUrlByType(contentUrlList, 'Rtf'),
   };
 }
 
@@ -108,7 +108,8 @@ export function parseDocumentFromApiResponse(docRef: RawDocumentReference): Docu
 
   if (Array.isArray(contentRefRaw)) {
     // Find MainDocument or use first entry
-    contentRef = contentRefRaw.find((ref) => ref.ContentType === "MainDocument") ?? contentRefRaw[0];
+    contentRef =
+      contentRefRaw.find((ref) => ref.ContentType === 'MainDocument') ?? contentRefRaw[0];
   } else {
     contentRef = contentRefRaw;
   }
@@ -122,58 +123,58 @@ export function parseDocumentFromApiResponse(docRef: RawDocumentReference): Docu
   const judikatur = metadaten.Judikatur;
 
   // Initialize citation variables
-  let kurztitelElem: unknown = "";
-  let langtitelElem: unknown = "";
-  let kundmachungsorgan: unknown = "";
-  let paragraph: unknown = "";
-  let inkrafttreten: unknown = "";
-  let ausserkrafttreten: unknown = "";
-  let eli: unknown = "";
-  let gesamteRechtsvorschriftUrl = "";
-  let geschaeftszahl = "";
-  let entscheidungsdatum: unknown = "";
+  let kurztitelElem: unknown = '';
+  let langtitelElem: unknown = '';
+  let kundmachungsorgan: unknown = '';
+  let paragraph: unknown = '';
+  let inkrafttreten: unknown = '';
+  let ausserkrafttreten: unknown = '';
+  let eli: unknown = '';
+  let gesamteRechtsvorschriftUrl = '';
+  let geschaeftszahl = '';
+  let entscheidungsdatum: unknown = '';
 
   if (bundesrecht) {
     // Handle Bundesrecht
     const nested = bundesrecht.BrKons ?? {};
-    kurztitelElem = bundesrecht.Kurztitel ?? "";
-    langtitelElem = bundesrecht.Langtitel ?? bundesrecht.Titel ?? "";
-    kundmachungsorgan = nested.Kundmachungsorgan ?? "";
-    paragraph = nested.ArtikelParagraphAnlage ?? "";
-    inkrafttreten = nested.Inkrafttretensdatum ?? "";
-    ausserkrafttreten = nested.Ausserkrafttretensdatum ?? "";
-    eli = bundesrecht.Eli ?? "";
-    gesamteRechtsvorschriftUrl = nested.GesamteRechtsvorschriftUrl ?? "";
+    kurztitelElem = bundesrecht.Kurztitel ?? '';
+    langtitelElem = bundesrecht.Langtitel ?? bundesrecht.Titel ?? '';
+    kundmachungsorgan = nested.Kundmachungsorgan ?? '';
+    paragraph = nested.ArtikelParagraphAnlage ?? '';
+    inkrafttreten = nested.Inkrafttretensdatum ?? '';
+    ausserkrafttreten = nested.Ausserkrafttretensdatum ?? '';
+    eli = bundesrecht.Eli ?? '';
+    gesamteRechtsvorschriftUrl = nested.GesamteRechtsvorschriftUrl ?? '';
   } else if (landesrecht) {
     // Handle Landesrecht
     const nested = landesrecht.LrKons ?? {};
-    kurztitelElem = landesrecht.Kurztitel ?? "";
-    langtitelElem = landesrecht.Langtitel ?? landesrecht.Titel ?? "";
-    kundmachungsorgan = nested.Kundmachungsorgan ?? "";
-    paragraph = nested.ArtikelParagraphAnlage ?? "";
-    inkrafttreten = nested.Inkrafttretensdatum ?? "";
-    ausserkrafttreten = nested.Ausserkrafttretensdatum ?? "";
-    eli = landesrecht.Eli ?? "";
-    gesamteRechtsvorschriftUrl = nested.GesamteRechtsvorschriftUrl ?? "";
+    kurztitelElem = landesrecht.Kurztitel ?? '';
+    langtitelElem = landesrecht.Langtitel ?? landesrecht.Titel ?? '';
+    kundmachungsorgan = nested.Kundmachungsorgan ?? '';
+    paragraph = nested.ArtikelParagraphAnlage ?? '';
+    inkrafttreten = nested.Inkrafttretensdatum ?? '';
+    ausserkrafttreten = nested.Ausserkrafttretensdatum ?? '';
+    eli = landesrecht.Eli ?? '';
+    gesamteRechtsvorschriftUrl = nested.GesamteRechtsvorschriftUrl ?? '';
   } else if (judikatur) {
     // Handle Judikatur (court decisions)
     const geschaeftszahlElem = judikatur.Geschaeftszahl;
-    if (typeof geschaeftszahlElem === "object" && geschaeftszahlElem !== null) {
+    if (typeof geschaeftszahlElem === 'object' && geschaeftszahlElem !== null) {
       const item = (geschaeftszahlElem as { item?: string | string[] }).item;
       if (Array.isArray(item)) {
-        geschaeftszahl = item.join(", ");
-      } else if (typeof item === "string") {
+        geschaeftszahl = item.join(', ');
+      } else if (typeof item === 'string') {
         geschaeftszahl = item;
       }
-    } else if (typeof geschaeftszahlElem === "string") {
+    } else if (typeof geschaeftszahlElem === 'string') {
       geschaeftszahl = geschaeftszahlElem;
     }
 
-    entscheidungsdatum = judikatur.Entscheidungsdatum ?? "";
+    entscheidungsdatum = judikatur.Entscheidungsdatum ?? '';
 
     // Get court-specific nested data
     const courtNested = judikatur.Vfgh ?? judikatur.Vwgh ?? judikatur.Justiz ?? judikatur.Bvwg;
-    const leitsatz = courtNested?.Leitsatz ?? "";
+    const leitsatz = courtNested?.Leitsatz ?? '';
 
     kurztitelElem = geschaeftszahl; // Use Geschaeftszahl as kurztitel
     langtitelElem = leitsatz; // Use Leitsatz as langtitel
@@ -191,20 +192,20 @@ export function parseDocumentFromApiResponse(docRef: RawDocumentReference): Docu
   };
 
   // Extract document number and application from Technisch section
-  const dokumentnummer = technisch.ID ?? "";
-  const applikation = technisch.Applikation ?? "";
+  const dokumentnummer = technisch.ID ?? '';
+  const applikation = technisch.Applikation ?? '';
 
   // Extract title
-  let titel = extractText(kurztitelElem) ?? "";
+  let titel = extractText(kurztitelElem) ?? '';
   if (!titel && geschaeftszahl) {
     titel = `GZ ${geschaeftszahl}`;
   }
   if (!titel && contentRef) {
     const name = contentRef.Name;
-    if (typeof name === "string") {
+    if (typeof name === 'string') {
       titel = name;
-    } else if (typeof name === "object" && name !== null) {
-      titel = name["#text"] ?? "";
+    } else if (typeof name === 'object' && name !== null) {
+      titel = name['#text'] ?? '';
     }
   }
 
@@ -232,7 +233,7 @@ export function parseDocumentFromApiResponse(docRef: RawDocumentReference): Docu
  */
 export type FindDocumentResult =
   | { success: true; document: Document }
-  | { success: false; error: "no_documents" | "not_found"; totalResults?: number };
+  | { success: false; error: 'no_documents' | 'not_found'; totalResults?: number };
 
 /**
  * Find a document by dokumentnummer from a list of raw API document references.
@@ -247,17 +248,17 @@ export type FindDocumentResult =
  */
 export function findDocumentByDokumentnummer(
   rawDocuments: RawDocumentReference[],
-  dokumentnummer: string
+  dokumentnummer: string,
 ): FindDocumentResult {
   if (!rawDocuments || rawDocuments.length === 0) {
-    return { success: false, error: "no_documents" };
+    return { success: false, error: 'no_documents' };
   }
 
   const parsedDocs = rawDocuments.map(parseDocumentFromApiResponse);
   const doc = parsedDocs.find((d) => d.dokumentnummer === dokumentnummer);
 
   if (!doc) {
-    return { success: false, error: "not_found", totalResults: rawDocuments.length };
+    return { success: false, error: 'not_found', totalResults: rawDocuments.length };
   }
 
   return { success: true, document: doc };
