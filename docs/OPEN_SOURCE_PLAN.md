@@ -282,20 +282,29 @@ Aktuell ignoriert `docs/` → das muss weg, docs sollen im Repo sein:
 
 `server.ts` hat 1.735 Zeilen - für Open Source Contributor schwer zu navigieren:
 
-- [ ] Tool-Handler in separate Dateien extrahieren:
+- [x] Tool-Handler in separate Dateien extrahiert:
   ```
   src/
+  ├── constants.ts          # Alle Konstanten (extrahiert)
+  ├── helpers.ts            # Helper Functions + Types (extrahiert)
   ├── tools/
+  │   ├── index.ts          # registerAllTools() — importiert & ruft alle 12 auf
   │   ├── bundesrecht.ts
   │   ├── landesrecht.ts
   │   ├── judikatur.ts
+  │   ├── bundesgesetzblatt.ts
+  │   ├── landesgesetzblatt.ts
+  │   ├── regierungsvorlagen.ts
   │   ├── dokument.ts
-  │   ├── ...
-  │   └── index.ts         # Re-exports
+  │   ├── bezirke.ts
+  │   ├── gemeinden.ts
+  │   ├── sonstige.ts
+  │   ├── history.ts
+  │   └── verordnungen.ts
   ├── server.ts             # Nur noch Server-Setup + Tool-Registration
   ```
-- [ ] Oder zumindest: Helper Functions in eigene Datei (`src/helpers.ts`)
-- [ ] Bewertung: Macht den Code zugänglicher, aber erfordert mehr Aufwand
+- [x] Helper Functions in eigene Datei (`src/helpers.ts`) + Konstanten in `src/constants.ts`
+- [x] Alle 611 Tests grün, TypeCheck, Lint, Format und Build erfolgreich
 
 ### 7.2 Dependencies aktualisieren
 
