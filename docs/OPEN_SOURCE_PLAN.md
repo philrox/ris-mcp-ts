@@ -178,8 +178,8 @@ Aktuell: Alle Tests nutzen Mocks. Ergänzen:
 
 Die README ist aktuell auf Deutsch und sehr ausführlich. Für Open Source:
 
-- [ ] **Sprache:** Auf Englisch umschreiben (internationale Zielgruppe)
-- [ ] **Struktur:**
+- [x] **Sprache:** Auf Englisch umschreiben (internationale Zielgruppe)
+- [x] **Struktur:**
   - Kurze Beschreibung + Badges (CI, npm, License, Node Version)
   - Features auf einen Blick (12 Tools, was sie können)
   - Quick Install (`npx ris-mcp-ts` oder `npm install -g ris-mcp-ts`)
@@ -187,17 +187,17 @@ Die README ist aktuell auf Deutsch und sehr ausführlich. Für Open Source:
   - Tool-Übersicht (kompakte Tabelle, Details in separater Docs-Page)
   - Contributing Link
   - License
-- [ ] Detaillierte Tool-Referenz nach `docs/TOOLS.md` oder in die README als klappbare Sections (`<details>`)
+- [x] Detaillierte Tool-Referenz nach `docs/TOOLS.md` oder in die README als klappbare Sections (`<details>`)
 - [ ] Screenshots oder GIFs der Nutzung (optional aber empfehlenswert)
 
 ### 5.2 LICENSE Datei
 
-- [ ] `LICENSE` Datei erstellen (MIT - steht schon in package.json)
-- [ ] Vollständiger MIT-Lizenztext mit Copyright-Hinweis
+- [x] `LICENSE` Datei erstellen (MIT - steht schon in package.json)
+- [x] Vollständiger MIT-Lizenztext mit Copyright-Hinweis
 
 ### 5.3 CONTRIBUTING.md
 
-- [ ] Erstellen mit:
+- [x] Erstellen mit:
   - Wie man das Projekt lokal einrichtet
   - Code Style (Prettier + ESLint)
   - Branch-Strategie
@@ -207,24 +207,24 @@ Die README ist aktuell auf Deutsch und sehr ausführlich. Für Open Source:
 
 ### 5.4 CHANGELOG.md
 
-- [ ] Erstellen mit initialem Release (v1.0.0)
-- [ ] Keep a Changelog Format verwenden (https://keepachangelog.com)
+- [x] Erstellen mit initialem Release (v1.0.0)
+- [x] Keep a Changelog Format verwenden (https://keepachangelog.com)
 - [ ] Ggf. `conventional-commits` + Tooling für automatische Changelog-Generierung
 
 ### 5.5 .gitignore anpassen
 
 Aktuell ignoriert `docs/` → das muss weg, docs sollen im Repo sein:
 
-- [ ] `docs/` aus `.gitignore` entfernen
-- [ ] Stattdessen nur `docs/*.pdf` ignorieren (oder PDFs ins Repo aufnehmen)
-- [ ] Prüfen ob `docs/Dokumentation_OGD-RIS_API.pdf` ins Repo gehört oder zu groß ist
+- [x] `docs/` aus `.gitignore` entfernen
+- [x] Stattdessen nur `docs/*.pdf` ignorieren (oder PDFs ins Repo aufnehmen)
+- [x] Prüfen ob `docs/Dokumentation_OGD-RIS_API.pdf` ins Repo gehört oder zu groß ist
 
 ### 5.6 GitHub Repository Setup
 
-- [ ] **Description:** "MCP Server for the Austrian Legal Information System (RIS) - Access Austrian federal laws, state laws, court decisions and more"
-- [ ] **Topics:** `mcp`, `model-context-protocol`, `austria`, `legal`, `ris`, `law`, `typescript`, `claude`
-- [ ] **Issue Templates** erstellen (Bug Report, Feature Request)
-- [ ] **PR Template** erstellen
+- [x] **Description:** "MCP Server for the Austrian Legal Information System (RIS) - Access Austrian federal laws, state laws, court decisions and more"
+- [x] **Topics:** `mcp`, `model-context-protocol`, `austria`, `legal`, `ris`, `law`, `typescript`, `claude`
+- [x] **Issue Templates** erstellen (Bug Report, Feature Request)
+- [x] **PR Template** erstellen
 - [ ] **Branch Protection** für `main` (require PR, require CI pass)
 
 ---
@@ -350,8 +350,8 @@ Empfohlene Reihenfolge für die Umsetzung:
 Absolute Minimum-Anforderungen bevor der erste Public Release:
 
 - [x] 0 npm audit Vulnerabilities
-- [ ] LICENSE Datei (MIT)
-- [ ] README.md auf Englisch mit Install-Anleitung
+- [x] LICENSE Datei (MIT)
+- [x] README.md auf Englisch mit Install-Anleitung
 - [x] CI Pipeline (GitHub Actions)
 - [x] Prettier + ESLint funktionieren und formatieren den Code
 - [x] `npm run check` läuft fehlerfrei durch
