@@ -75,7 +75,7 @@ Aktueller `npm audit` Output (6 Vulnerabilities):
 - [x] `npm audit fix` ausführen (SDK + hono Fixes, non-breaking)
 - [x] `vitest` auf v4 updaten (breaking change, Tests ggf. anpassen)
 - [x] `npm audit` danach nochmal prüfen → Ziel: 0 Vulnerabilities
-- [ ] Regelmäßiges Audit via GitHub Dependabot (siehe Phase 4)
+- [x] Regelmäßiges Audit via GitHub Dependabot (siehe Phase 4)
 
 ### 2.2 Code Security Review
 
@@ -104,7 +104,7 @@ Aktueller `npm audit` Output (6 Vulnerabilities):
 - [x] Coverage Script ergänzen: `"test:coverage": "vitest run --coverage"`
 - [x] Vitest Config um Coverage-Konfiguration erweitern
 - [x] Coverage Thresholds setzen (Ziel: >80% Statements)
-- [ ] Coverage Report im CI generieren
+- [x] Coverage Report im CI generieren
 
 ### 3.2 Integration Tests
 
@@ -116,7 +116,7 @@ Aktuell: Alle Tests nutzen Mocks. Ergänzen:
   - `ris_judikatur` mit `gericht="Justiz"` → bekommt Ergebnisse
   - `ris_dokument` mit bekannter `dokumentnummer` → bekommt Volltext
 - [x] npm Script: `"test:integration": "vitest run --config vitest.integration.config.ts"`
-- [ ] Diese Tests nur in CI als separater Job (nicht bei jedem Push)
+- [x] Diese Tests nur in CI als separater Job (nicht bei jedem Push)
 
 ### 3.3 Edge Case Tests
 
@@ -133,7 +133,7 @@ Aktuell: Alle Tests nutzen Mocks. Ergänzen:
 
 ### 4.1 CI Workflow
 
-- [ ] `.github/workflows/ci.yml` erstellen:
+- [x] `.github/workflows/ci.yml` erstellen:
   ```yaml
   name: CI
   on: [push, pull_request]
@@ -153,19 +153,22 @@ Aktuell: Alle Tests nutzen Mocks. Ergänzen:
 
 ### 4.2 Weitere CI Features
 
-- [ ] **Dependabot** konfigurieren (`.github/dependabot.yml`) für automatische Security Updates
-- [ ] **CodeQL Analysis** aktivieren (GitHub Security Tab → Code Scanning)
-- [ ] **npm publish Workflow** erstellen (auf Tag Push, z.B. `v*`)
-- [ ] **Badge** in README für CI Status
+- [x] **Dependabot** konfigurieren (`.github/dependabot.yml`) für automatische Security Updates
+- [x] **CodeQL Analysis** — `.github/workflows/codeql.yml` (weekly cron + push/PR to main, security-extended queries)
+- [x] **npm publish Workflow** — `.github/workflows/release.yml` (auf Tag Push `v*`)
+- [x] **Badge** in README für CI Status
 
 ### 4.3 Release Workflow
 
-- [ ] GitHub Release Workflow (auf Tags):
+- [x] GitHub Release Workflow (auf Tags):
   - Build
-  - Tests
-  - npm publish
-  - GitHub Release erstellen
-- [ ] Semantic Versioning Strategie festlegen
+  - Tests (`npm run check`)
+  - npm publish (mit `NPM_TOKEN` Secret)
+  - GitHub Release erstellen (auto-generated release notes)
+- [x] Semantic Versioning Strategie festgelegt:
+  - **MAJOR** (x.0.0): Breaking changes to tool schemas or behavior
+  - **MINOR** (0.x.0): New tools, new parameters, new features
+  - **PATCH** (0.0.x): Bug fixes, documentation updates
 
 ---
 
@@ -349,7 +352,7 @@ Absolute Minimum-Anforderungen bevor der erste Public Release:
 - [x] 0 npm audit Vulnerabilities
 - [ ] LICENSE Datei (MIT)
 - [ ] README.md auf Englisch mit Install-Anleitung
-- [ ] CI Pipeline (GitHub Actions)
+- [x] CI Pipeline (GitHub Actions)
 - [x] Prettier + ESLint funktionieren und formatieren den Code
 - [x] `npm run check` läuft fehlerfrei durch
 - [ ] `npm publish` funktioniert

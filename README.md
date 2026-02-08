@@ -1,5 +1,7 @@
 # RIS MCP Server
 
+[![CI](https://github.com/philrox/ris-mcp-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/philrox/ris-mcp-ts/actions/workflows/ci.yml)
+
 MCP Server fuer das oesterreichische Rechtsinformationssystem (RIS).
 
 Das RIS ist die offizielle Rechtsdatenbank der Republik Oesterreich und enthaelt Bundesgesetze, Landesgesetze, Gerichtsentscheidungen und weitere Rechtsquellen. Dieser MCP Server ermoeglicht den Zugriff auf diese Daten ueber das Model Context Protocol.
