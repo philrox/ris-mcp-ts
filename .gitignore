@@ -1,7 +1,13 @@
 node_modules/
 dist/
-.env
-.env.local
+.env*
 *.log
+*.tgz
+*.tsbuildinfo
 .DS_Store
-docs/
+.idea/
+.vscode/
+coverage/
+docs/*.pdf
+specs/
+

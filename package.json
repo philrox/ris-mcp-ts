@@ -13,12 +13,24 @@
     "start": "node dist/index.js",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "check": "npm run typecheck && npm run lint && npm run test",
-    "prebuild": "npm run typecheck"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "prebuild": "npm run typecheck",
+    "prepublishOnly": "npm run check && npm run build",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -26,18 +38,26 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
     "@eslint/js": "^9.39.2",
-    "@types/node": "^20.0.0",
+    "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.16.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
     "tsx": "^4.7.0",
     "typescript": "^5.4.0",
     "typescript-eslint": "^8.54.0",
-    "vitest": "^1.0.0"
+    "vitest": "^4.0.18"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "keywords": [
     "mcp",
@@ -49,5 +69,19 @@
     "law"
   ],
   "author": "philrox <phil@resultsbymagic.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/philrox/ris-mcp-ts.git"
+  },
+  "homepage": "https://github.com/philrox/ris-mcp-ts#readme",
+  "bugs": {
+    "url": "https://github.com/philrox/ris-mcp-ts/issues"
+  },
+  "files": [
+    "dist/",
+    "!dist/__tests__/",
+    "README.md",
+    "LICENSE"
+  ]
 }

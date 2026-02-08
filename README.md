@@ -1,630 +1,490 @@
 # RIS MCP Server
 
-MCP Server fuer das oesterreichische Rechtsinformationssystem (RIS).
+[![CI](https://github.com/philrox/ris-mcp-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/philrox/ris-mcp-ts/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/ris-mcp-ts.svg)](https://www.npmjs.com/package/ris-mcp-ts)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
+[![MCP](https://img.shields.io/badge/MCP-compatible-blue.svg)](https://modelcontextprotocol.io/)
 
-Das RIS ist die offizielle Rechtsdatenbank der Republik Oesterreich und enthaelt Bundesgesetze, Landesgesetze, Gerichtsentscheidungen und weitere Rechtsquellen. Dieser MCP Server ermoeglicht den Zugriff auf diese Daten ueber das Model Context Protocol.
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that gives AI assistants access to Austria's official legal database — the **Rechtsinformationssystem (RIS)**.
 
-## Funktionsuebersicht
+Ask your AI assistant about Austrian law, and it will search and retrieve legal documents directly from the official government API. No API key required.
 
-| Tool | Beschreibung |
-|------|--------------|
-| `ris_bundesrecht` | Bundesgesetze (ABGB, StGB, UGB, etc.) |
-| `ris_landesrecht` | Landesgesetze der 9 Bundeslaender |
-| `ris_judikatur` | Gerichtsentscheidungen (11 Gerichtstypen) |
-| `ris_bundesgesetzblatt` | Bundesgesetzblatt I/II/III |
-| `ris_landesgesetzblatt` | Landesgesetzblatt |
-| `ris_regierungsvorlagen` | Parlamentarische Regierungsvorlagen |
-| `ris_dokument` | Volltext eines Dokuments abrufen |
-| `ris_bezirke` | Bezirksverwaltungsbehoerden |
-| `ris_gemeinden` | Gemeinderecht |
-| `ris_sonstige` | Sonstige Sammlungen (Erlaesse, Protokolle, etc.) |
-| `ris_history` | Aenderungshistorie von Dokumenten |
-| `ris_verordnungen` | Verordnungsblaetter der Laender |
+## What You Can Do
 
-## Installation
+Once connected, you can ask your AI assistant things like:
 
-### Voraussetzungen
+> "What does Austrian law say about tenancy rights?"
 
-- Node.js >= 18.0.0
+> "Find Constitutional Court decisions on freedom of expression."
 
-### Setup
+> "Show me §1295 of the ABGB (Austrian Civil Code)."
+
+> "What laws about climate protection were published in 2024?"
+
+> "Look up the building code for the province of Salzburg."
+
+> "Get the full text of document NOR40052761."
+
+The server translates these natural language requests into structured API calls against the [RIS Open Government Data API](https://data.bka.gv.at/ris/api/v2.6/).
+
+## Features
+
+- **12 specialized tools** covering all major RIS collections
+- **Federal law** (ABGB, StGB, UGB, ...) and **state law** for all 9 provinces
+- **Court decisions** from 11 court types (Supreme Court, Constitutional Court, Administrative Court, ...)
+- **Law gazettes** — Federal (BGBl) and state (LGBl)
+- **Government bills**, ministerial decrees, cabinet protocols
+- **Full document retrieval** with smart prefix-based routing
+- **Change history tracking** across 30 application types
+- **Markdown and JSON** output formats
+- **Free and open** — uses Austria's Open Government Data API, no API key needed
+
+## Quick Start
+
+Run directly without installation:
 
 ```bash
-npm install
-npm run build
+npx ris-mcp-ts
 ```
 
-## Claude Desktop Konfiguration
+Or install globally:
 
-Fuege folgende Konfiguration zu deiner Claude Desktop Konfigurationsdatei hinzu:
+```bash
+npm install -g ris-mcp-ts
+```
 
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+## Configuration
 
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+### Claude Desktop
+
+Add to your Claude Desktop config:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
-    "ris-mcp": {
-      "command": "node",
-      "args": ["/absoluter/pfad/zu/ris-mcp-ts/dist/index.js"]
+    "ris": {
+      "command": "npx",
+      "args": ["-y", "ris-mcp-ts"]
     }
   }
 }
 ```
 
-## Werkzeug-Referenz
+### Claude Code
 
-### ris_bundesrecht
+Add to your project or user settings:
 
-Durchsucht oesterreichische Bundesgesetze wie ABGB, StGB, UGB und weitere.
+```bash
+claude mcp add ris -- npx -y ris-mcp-ts
+```
 
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `suchworte` | string | Nein | Volltextsuche (z.B. "Mietrecht", "Schadenersatz") |
-| `titel` | string | Nein | Suche in Gesetzesnamen (z.B. "ABGB", "Strafgesetzbuch") |
-| `paragraph` | string | Nein | Paragraphennummer (z.B. "1295" fuer §1295) |
-| `applikation` | string | Nein | Datenquelle: "BrKons" (konsolidiert, Standard), "Begut" (Begutachtungsentwuerfe), "Erv" (englische Version) |
-| `fassung_vom` | string | Nein | Datum fuer historische Fassung (YYYY-MM-DD) |
-| `seite` | number | Nein | Seitennummer (Standard: 1) |
-| `limit` | number | Nein | Ergebnisse pro Seite: 10, 20, 50, 100 (Standard: 20) |
-| `response_format` | string | Nein | "markdown" (Standard) oder "json" |
+### VS Code (Copilot)
 
-**Beispiele:**
+Add to `.vscode/mcp.json` in your project:
+
+```json
+{
+  "servers": {
+    "ris": {
+      "command": "npx",
+      "args": ["-y", "ris-mcp-ts"]
+    }
+  }
+}
+```
+
+### Other MCP Clients
+
+Any MCP-compatible client can connect via stdio transport:
+
+```bash
+npx ris-mcp-ts
+```
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `ris_bundesrecht` | Search federal laws (ABGB, StGB, UGB, etc.) |
+| `ris_landesrecht` | Search state/provincial laws (all 9 provinces) |
+| `ris_judikatur` | Search court decisions (11 court types) |
+| `ris_bundesgesetzblatt` | Search Federal Law Gazettes (BGBl I/II/III) |
+| `ris_landesgesetzblatt` | Search State Law Gazettes (LGBl) |
+| `ris_regierungsvorlagen` | Search government bills |
+| `ris_dokument` | Retrieve full document text by ID or URL |
+| `ris_bezirke` | Search district authority announcements |
+| `ris_gemeinden` | Search municipal law and regulations |
+| `ris_sonstige` | Search miscellaneous collections (8 sub-apps) |
+| `ris_history` | Track document change history (30 app types) |
+| `ris_verordnungen` | Search state ordinance gazettes |
+
+## Tool Reference
+
+<details>
+<summary><strong>ris_bundesrecht</strong> — Federal Laws</summary>
+
+Search Austrian federal laws such as ABGB, StGB, UGB, and more.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suchworte` | string | Full-text search (e.g., "Mietrecht", "Schadenersatz") |
+| `titel` | string | Search in law titles (e.g., "ABGB", "Strafgesetzbuch") |
+| `paragraph` | string | Section number (e.g., "1295" for §1295) |
+| `applikation` | string | "BrKons" (consolidated, default), "Begut" (draft reviews), "Erv" (English version) |
+| `fassung_vom` | string | Date for historical version (YYYY-MM-DD) |
+| `seite` | number | Page number (default: 1) |
+| `limit` | number | Results per page: 10, 20, 50, 100 (default: 20) |
+| `response_format` | string | "markdown" (default) or "json" |
+
+All parameters are optional. At least one search parameter (`suchworte`, `titel`, or `paragraph`) should be provided.
+
+</details>
+
+<details>
+<summary><strong>ris_landesrecht</strong> — State/Provincial Laws</summary>
+
+Search state laws of the nine Austrian provinces.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in law titles |
+| `bundesland` | string | Province: Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
+| `applikation` | string | "LrKons" (consolidated, default) |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+</details>
+
+<details>
+<summary><strong>ris_judikatur</strong> — Court Decisions</summary>
+
+Search court decisions from Austrian courts.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suchworte` | string | Full-text search in decisions |
+| `gericht` | string | Court type (see below) |
+| `norm` | string | Legal norm (e.g., "1319a ABGB") |
+| `geschaeftszahl` | string | Case number (e.g., "5Ob234/20b") |
+| `entscheidungsdatum_von` | string | Decision date from (YYYY-MM-DD) |
+| `entscheidungsdatum_bis` | string | Decision date to (YYYY-MM-DD) |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+**Available courts:**
+
+| Value | Court |
+|-------|-------|
+| `Justiz` | Supreme Court (OGH), Higher Regional Courts (OLG), Regional Courts (LG) — default |
+| `Vfgh` | Constitutional Court |
+| `Vwgh` | Supreme Administrative Court |
+| `Bvwg` | Federal Administrative Court |
+| `Lvwg` | Provincial Administrative Courts |
+| `Dsk` | Data Protection Authority |
+| `AsylGH` | Asylum Court (historical) |
+| `Normenliste` | Index of legal norms |
+| `Pvak` | Personnel Representation Supervisory Commission |
+| `Gbk` | Equal Treatment Commission |
+| `Dok` | Disciplinary Commission |
+
+</details>
+
+<details>
+<summary><strong>ris_bundesgesetzblatt</strong> — Federal Law Gazette</summary>
+
+Search the Federal Law Gazette (BGBl) — official publications of federal legislation.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `bgblnummer` | string | Gazette number (e.g., "120") |
+| `teil` | string | "1" (I = Acts), "2" (II = Regulations), "3" (III = Treaties) |
+| `jahrgang` | string | Year (e.g., "2023") |
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in titles |
+| `applikation` | string | "BgblAuth" (authentic from 2004, default), "BgblPdf" (PDF), "BgblAlt" (1945–2003) |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+</details>
+
+<details>
+<summary><strong>ris_landesgesetzblatt</strong> — State Law Gazette</summary>
+
+Search State Law Gazettes (LGBl) — official publications of state legislation.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `lgblnummer` | string | Gazette number (e.g., "50") |
+| `jahrgang` | string | Year (e.g., "2023") |
+| `bundesland` | string | Province name |
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in titles |
+| `applikation` | string | "LgblAuth" (authentic, default), "Lgbl" (general), "LgblNO" (Niederoesterreich) |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+</details>
+
+<details>
+<summary><strong>ris_regierungsvorlagen</strong> — Government Bills</summary>
+
+Search government bills — draft legislation submitted to parliament.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in titles |
+| `beschlussdatum_von` | string | Approval date from (YYYY-MM-DD) |
+| `beschlussdatum_bis` | string | Approval date to (YYYY-MM-DD) |
+| `einbringende_stelle` | string | Submitting ministry (e.g., BKA, BMF, BMJ, BMK) |
+| `im_ris_seit` | string | Added recently: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
+| `sortierung_richtung` | string | Ascending or Descending |
+| `sortierung_spalte` | string | Kurztitel, EinbringendeStelle, Beschlussdatum |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+</details>
+
+<details>
+<summary><strong>ris_dokument</strong> — Full Document Retrieval</summary>
+
+Retrieve the full text of a legal document by its ID or URL. Uses a dual strategy: direct URL access first, then search API fallback.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `dokumentnummer` | string | RIS document number (e.g., "NOR40052761") |
+| `url` | string | Direct URL to document content |
+| `response_format` | string | "markdown" (default) or "json" |
+
+At least one of `dokumentnummer` or `url` is required. Long documents are truncated to 25,000 characters.
+
+**Supported document prefixes:**
+
+| Prefix | Type |
+|--------|------|
+| NOR | Federal norms |
+| LBG, LKT, LNO, LOO, LSB, LST, LTI, LVB, LWI | State laws (9 provinces) |
+| JWR, JFR, JWT, BVWG, LVWG, DSB, GBK, PVAK, ASYLGH | Court decisions |
+| BGBLA, BGBL | Federal Law Gazette |
+| REGV | Government bills |
+| BVB | District authorities |
+| VBL | Ordinance gazettes |
+| MRP, ERL | Cabinet protocols, ministerial decrees |
+
+</details>
+
+<details>
+<summary><strong>ris_bezirke</strong> — District Authority Announcements</summary>
+
+Search announcements from district administrative authorities.
+
+> **Note:** Only available for: Niederoesterreich, Oberoesterreich, Tirol, Vorarlberg, Burgenland, Steiermark.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in titles |
+| `bundesland` | string | Province name |
+| `bezirksverwaltungsbehoerde` | string | District authority name |
+| `kundmachungsnummer` | string | Announcement number |
+| `kundmachungsdatum_von` | string | Date from (YYYY-MM-DD) |
+| `kundmachungsdatum_bis` | string | Date to (YYYY-MM-DD) |
+| `im_ris_seit` | string | Added recently: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+</details>
+
+<details>
+<summary><strong>ris_gemeinden</strong> — Municipal Law</summary>
+
+Search municipal law — local ordinances and regulations.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in titles |
+| `bundesland` | string | Province name |
+| `gemeinde` | string | Municipality name (e.g., "Graz") |
+| `applikation` | string | "Gr" (municipal law, default) or "GrA" (official gazettes) |
+| `im_ris_seit` | string | Added recently |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+Additional parameters depend on the selected application. See `Gr` (municipal law) and `GrA` (official gazettes) specific parameters in the source code.
+
+</details>
+
+<details>
+<summary><strong>ris_sonstige</strong> — Miscellaneous Collections</summary>
+
+Search miscellaneous legal collections and specialized databases.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `applikation` | string | **Required.** Collection to search (see below) |
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in titles |
+| `datum_von` | string | Date from (YYYY-MM-DD) |
+| `datum_bis` | string | Date to (YYYY-MM-DD) |
+| `im_ris_seit` | string | Added recently |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+**Available collections:**
+
+| Value | Description |
+|-------|-------------|
+| `Mrp` | Cabinet protocols (Ministerratsprotokolle) |
+| `Erlaesse` | Ministerial decrees |
+| `Upts` | Party transparency reports |
+| `KmGer` | Court announcements |
+| `Avsv` | Social insurance regulations |
+| `Avn` | Veterinary notices |
+| `Spg` | Health structure plans |
+| `PruefGewO` | Trade licensing exams |
+
+Each collection has additional specific parameters. See the tool description for details.
+
+</details>
+
+<details>
+<summary><strong>ris_history</strong> — Document Change History</summary>
+
+Track document creation, modification, and deletion across the RIS database.
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `applikation` | string | **Required.** Application type (30 options — see below) |
+| `aenderungen_von` | string | Changes from date (YYYY-MM-DD) |
+| `aenderungen_bis` | string | Changes to date (YYYY-MM-DD) |
+| `include_deleted` | boolean | Include deleted documents (default: false) |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+**Available applications (30):**
+
+Federal law: `Bundesnormen`, `BgblAuth`, `BgblAlt`, `BgblPdf`, `RegV`
+State law: `Landesnormen`, `LgblAuth`, `Lgbl`, `LgblNO`, `Vbl`, `Gemeinderecht`, `GemeinderechtAuth`
+Case law: `Justiz`, `Vfgh`, `Vwgh`, `Bvwg`, `Lvwg`, `Dsk`, `Gbk`, `Pvak`, `AsylGH`
+Other: `Bvb`, `Mrp`, `Erlaesse`, `PruefGewO`, `Avsv`, `Spg`, `KmGer`, `Dok`, `Normenliste`
+
+</details>
+
+<details>
+<summary><strong>ris_verordnungen</strong> — State Ordinance Gazettes</summary>
+
+Search state ordinance gazettes (Verordnungsblätter).
+
+> **Note:** Currently only data from **Tirol** is available (since January 2022).
+
+**Inputs:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `suchworte` | string | Full-text search |
+| `titel` | string | Search in titles |
+| `bundesland` | string | Province name |
+| `kundmachungsnummer` | string | Announcement number |
+| `kundmachungsdatum_von` | string | Date from (YYYY-MM-DD) |
+| `kundmachungsdatum_bis` | string | Date to (YYYY-MM-DD) |
+| `seite` | number | Page number |
+| `limit` | number | Results per page |
+| `response_format` | string | "markdown" or "json" |
+
+</details>
+
+## Development
+
+### Prerequisites
+
+- Node.js >= 20.0.0
+
+### Setup
+
+```bash
+git clone https://github.com/philrox/ris-mcp-ts.git
+cd ris-mcp-ts
+npm install
+npm run build
+```
+
+### Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start with hot reload (tsx) |
+| `npm run build` | Compile TypeScript |
+| `npm start` | Run compiled version |
+| `npm test` | Run all tests |
+| `npm run check` | Typecheck + lint + format check + tests |
+| `npm run inspect` | Launch MCP Inspector for manual testing |
+
+### Project Structure
 
 ```
-suchworte="Mietrecht"
-titel="ABGB", paragraph="1319a"
-titel="StGB", suchworte="Koerperverletzung"
+src/
+├── index.ts           # Entry point (stdio transport)
+├── server.ts          # MCP server setup, delegates to tools/
+├── client.ts          # HTTP client for RIS API
+├── types.ts           # Zod schemas + TypeScript types
+├── parser.ts          # JSON parsing and response normalization
+├── formatting.ts      # Output formatting (markdown/json)
+├── helpers.ts         # Shared helper functions
+├── constants.ts       # Static mappings and configuration
+├── tools/             # One file per tool handler
+│   ├── index.ts
+│   ├── bundesrecht.ts
+│   ├── landesrecht.ts
+│   ├── judikatur.ts
+│   └── ...
+└── __tests__/         # Unit and integration tests
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+[MIT](LICENSE)
 
 ---
 
-### ris_landesrecht
-
-Durchsucht Landesgesetze der neun oesterreichischen Bundeslaender.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Gesetzesnamen |
-| `bundesland` | string | Nein | Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
-| `applikation` | string | Nein | "LrKons" (konsolidiert, Standard) |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Beispiele:**
-
-```
-suchworte="Bauordnung", bundesland="Salzburg"
-bundesland="Wien", titel="Bauordnung"
-```
-
----
-
-### ris_judikatur
-
-Durchsucht Gerichtsentscheidungen oesterreichischer Gerichte.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `suchworte` | string | Nein | Volltextsuche in Entscheidungen |
-| `gericht` | string | Nein | Gerichtstyp (siehe unten) |
-| `norm` | string | Nein | Rechtsnorm (z.B. "1319a ABGB") |
-| `geschaeftszahl` | string | Nein | Geschaeftszahl (z.B. "5Ob234/20b") |
-| `entscheidungsdatum_von` | string | Nein | Entscheidungsdatum ab (YYYY-MM-DD) |
-| `entscheidungsdatum_bis` | string | Nein | Entscheidungsdatum bis (YYYY-MM-DD) |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Verfuegbare Gerichte:**
-
-| Wert | Gericht |
-|------|---------|
-| `Justiz` | OGH, OLG, LG (Standard) |
-| `Vfgh` | Verfassungsgerichtshof |
-| `Vwgh` | Verwaltungsgerichtshof |
-| `Bvwg` | Bundesverwaltungsgericht |
-| `Lvwg` | Landesverwaltungsgerichte |
-| `Dsk` | Datenschutzbehoerde |
-| `AsylGH` | Asylgerichtshof (historisch) |
-| `Normenliste` | Normenliste |
-| `Pvak` | Personalvertretungsaufsichtskommission |
-| `Gbk` | Gleichbehandlungskommission |
-| `Dok` | Disziplinarkommission |
-
-**Beispiele:**
-
-```
-gericht="Vfgh", suchworte="Grundrecht"
-gericht="Justiz", geschaeftszahl="5Ob234/20b"
-norm="823 ABGB", gericht="Justiz"
-```
-
----
-
-### ris_bundesgesetzblatt
-
-Durchsucht das Bundesgesetzblatt (BGBl) - offizielle Publikationen von Bundesgesetzen.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `bgblnummer` | string | Nein | Gesetzblatt-Nummer (z.B. "120") |
-| `teil` | string | Nein | "1" (I=Gesetze), "2" (II=Verordnungen), "3" (III=Staatsvertraege) |
-| `jahrgang` | string | Nein | Jahr (z.B. "2023") |
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Titeln |
-| `applikation` | string | Nein | "BgblAuth" (authentisch ab 2004, Standard), "BgblPdf" (PDF), "BgblAlt" (1945-2003) |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Beispiele:**
-
-```
-bgblnummer="120", jahrgang="2023", teil="1"
-suchworte="Klimaschutz", jahrgang="2024"
-```
-
----
-
-### ris_landesgesetzblatt
-
-Durchsucht Landesgesetzblaetter (LGBl) - offizielle Publikationen der Landesgesetze.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `lgblnummer` | string | Nein | Gesetzblatt-Nummer (z.B. "50") |
-| `jahrgang` | string | Nein | Jahr (z.B. "2023") |
-| `bundesland` | string | Nein | Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Titeln |
-| `applikation` | string | Nein | "LgblAuth" (authentisch, Standard), "Lgbl" (allgemein), "LgblNO" (Niederoesterreich) |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Beispiele:**
-
-```
-lgblnummer="50", jahrgang="2023", bundesland="Wien"
-suchworte="Bauordnung", bundesland="Salzburg"
-```
-
----
-
-### ris_regierungsvorlagen
-
-Durchsucht Regierungsvorlagen - Gesetzesentwuerfe der Bundesregierung an das Parlament.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Titeln |
-| `beschlussdatum_von` | string | Nein | Beschlussdatum ab (YYYY-MM-DD) |
-| `beschlussdatum_bis` | string | Nein | Beschlussdatum bis (YYYY-MM-DD) |
-| `einbringende_stelle` | string | Nein | Einbringendes Ministerium (siehe unten) |
-| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
-| `sortierung_richtung` | string | Nein | Ascending oder Descending |
-| `sortierung_spalte` | string | Nein | Kurztitel, EinbringendeStelle, Beschlussdatum |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Verfuegbare Ministerien:**
-
-| Kuerzel | Ministerium |
-|---------|-------------|
-| BKA | Bundeskanzleramt |
-| BMF | Bundesministerium fuer Finanzen |
-| BMI | Bundesministerium fuer Inneres |
-| BMJ | Bundesministerium fuer Justiz |
-| BMK | Bundesministerium fuer Klimaschutz |
-| BMLV | Bundesministerium fuer Landesverteidigung |
-| BMAW | Bundesministerium fuer Arbeit und Wirtschaft |
-| BMBWF | Bundesministerium fuer Bildung, Wissenschaft und Forschung |
-| BMDW | Bundesministerium fuer Digitalisierung und Wirtschaftsstandort |
-| BMEIA | Bundesministerium fuer Europa und Aeusseres |
-| BMSGPK | Bundesministerium fuer Soziales, Gesundheit, Pflege und Konsumentenschutz |
-| BML | Bundesministerium fuer Land- und Forstwirtschaft |
-| BMKOES | Bundesministerium fuer Kunst, Kultur, Sport |
-| BMFSFJ | Bundesministerium fuer Frauen, Familie, Integration und Medien |
-
-**Beispiele:**
-
-```
-suchworte="Klimaschutz"
-einbringende_stelle="BMK", beschlussdatum_von="2024-01-01"
-titel="Steuerreform", sortierung_richtung="Descending"
-```
-
----
-
-### ris_dokument
-
-Ruft den Volltext eines Rechtsdokuments ab. Verwendet eine Dual-Strategie: Erst direkter URL-Zugriff, bei Fehlschlag Fallback ueber Such-API.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `dokumentnummer` | string | Nein | RIS Dokumentnummer (z.B. "NOR40052761") - aus Suchergebnissen |
-| `url` | string | Nein | Direkte URL zum Dokumentinhalt |
-| `response_format` | string | Nein | "markdown" (Standard) oder "json" |
-
-**Hinweis:** Bei langen Dokumenten wird der Inhalt auf 25.000 Zeichen gekuerzt.
-
-**Unterstuetzte Dokumenttypen (Praefix-basiertes Routing):**
-
-| Praefix | Dokumenttyp |
-|---------|-------------|
-| NOR | Bundesnormen (Bundesgesetze) |
-| LBG, LKT, LNO, LOO, LSB, LST, LTI, LVB, LWI | Landesgesetze (9 Bundeslaender) |
-| JWR, JFR, JWT | VwGH, VfGH, Justiz Entscheidungen |
-| BVWG, LVWG, DSB, GBK, PVAK, ASYLGH | Weitere Gerichte |
-| BGBLA, BGBL | Bundesgesetzblatt |
-| REGV | Regierungsvorlagen |
-| BVB | Bezirksverwaltungsbehoerden |
-| VBL | Verordnungsblaetter |
-| MRP, ERL | Ministerratsprotokolle, Erlaesse |
-
-**Beispiele:**
-
-```
-dokumentnummer="NOR40052761"
-dokumentnummer="JWR_2024100001"
-url="https://www.ris.bka.gv.at/..."
-```
-
----
-
-### ris_bezirke
-
-Durchsucht Kundmachungen der Bezirksverwaltungsbehoerden.
-
-**Hinweis:** Nur folgende Bundeslaender veroeffentlichen hier: Niederoesterreich, Oberoesterreich, Tirol, Vorarlberg, Burgenland, Steiermark.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Titeln |
-| `bundesland` | string | Nein | Niederoesterreich, Oberoesterreich, Tirol, Vorarlberg, Burgenland, Steiermark |
-| `bezirksverwaltungsbehoerde` | string | Nein | Bezirksbehoerde (z.B. "Bezirkshauptmannschaft Innsbruck") |
-| `kundmachungsnummer` | string | Nein | Kundmachungsnummer |
-| `kundmachungsdatum_von` | string | Nein | Kundmachungsdatum ab (YYYY-MM-DD) |
-| `kundmachungsdatum_bis` | string | Nein | Kundmachungsdatum bis (YYYY-MM-DD) |
-| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Beispiele:**
-
-```
-bundesland="Niederoesterreich", suchworte="Bauordnung"
-bezirksverwaltungsbehoerde="Bezirkshauptmannschaft Innsbruck"
-bundesland="Tirol", im_ris_seit="EinemMonat"
-```
-
----
-
-### ris_gemeinden
-
-Durchsucht Gemeinderecht - kommunale Verordnungen und Vorschriften.
-
-**Allgemeine Parameter:**
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Titeln |
-| `bundesland` | string | Nein | Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
-| `gemeinde` | string | Nein | Gemeindename (z.B. "Graz") |
-| `applikation` | string | Nein | "Gr" (Gemeinderecht, Standard) oder "GrA" (Amtsblaetter) |
-| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
-| `sortierung_richtung` | string | Nein | Ascending oder Descending |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Gr-spezifische Parameter (Gemeinderecht):**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `geschaeftszahl` | string | Aktenzeichen |
-| `index` | string | Sachbereich (siehe Index-Werte) |
-| `fassung_vom` | string | Historische Fassung (YYYY-MM-DD) |
-| `sortierung_spalte_gr` | string | Geschaeftszahl, Bundesland, Gemeinde |
-
-**GrA-spezifische Parameter (Amtsblaetter):**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `bezirk` | string | Bezirksname (z.B. "Bregenz") |
-| `gemeindeverband` | string | Gemeindeverband |
-| `kundmachungsnummer` | string | Kundmachungsnummer |
-| `kundmachungsdatum_von` | string | Kundmachungsdatum ab (YYYY-MM-DD) |
-| `kundmachungsdatum_bis` | string | Kundmachungsdatum bis (YYYY-MM-DD) |
-
-**Index-Werte (fuer Gr):**
-
-- VertretungskoerperUndAllgemeineVerwaltung
-- OeffentlicheOrdnungUndSicherheit
-- UnterrichtErziehungSportUndWissenschaft
-- KunstKulturUndKultus
-- SozialeWohlfahrtUndWohnbaufoerderung
-- Gesundheit
-- StrassenUndWasserbauVerkehr
-- Wirtschaftsfoerderung
-- Dienstleistungen
-- Finanzwirtschaft
-- Undefined
-
-**Beispiele:**
-
-```
-gemeinde="Graz", suchworte="Parkgebuehren"
-bundesland="Tirol", titel="Gebuehrenordnung"
-applikation="Gr", index="Gesundheit", bundesland="Wien"
-applikation="GrA", bezirk="Bregenz", kundmachungsdatum_von="2024-01-01"
-```
-
----
-
-### ris_sonstige
-
-Durchsucht sonstige Rechtssammlungen und spezialisierte Datenbanken.
-
-**Allgemeine Parameter:**
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `applikation` | string | Ja | Sammlung (siehe unten) |
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Titeln |
-| `datum_von` | string | Nein | Datum ab (YYYY-MM-DD) - Feldname variiert je nach Applikation |
-| `datum_bis` | string | Nein | Datum bis (YYYY-MM-DD) |
-| `im_ris_seit` | string | Nein | Zeitfilter: EinerWoche, ZweiWochen, EinemMonat, DreiMonaten, SechsMonaten, EinemJahr |
-| `sortierung_richtung` | string | Nein | Ascending oder Descending |
-| `geschaeftszahl` | string | Nein | Geschaeftszahl (Mrp, Upts, KmGer) |
-| `norm` | string | Nein | Rechtsnorm (Erlaesse, Upts) |
-| `fassung_vom` | string | Nein | Historische Fassung (Erlaesse) |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Verfuegbare Sammlungen (8):**
-
-| Wert | Beschreibung | Spezifische Parameter |
-|------|--------------|----------------------|
-| `Mrp` | Ministerratsprotokolle | einbringer, sitzungsnummer, gesetzgebungsperiode |
-| `Erlaesse` | Ministerialerlaesse | bundesministerium, abteilung, fundstelle |
-| `Upts` | Parteientransparenz | partei |
-| `KmGer` | Gerichtskundmachungen | kmger_typ, gericht |
-| `Avsv` | Sozialversicherung | dokumentart, urheber, avsvnummer |
-| `Avn` | Amtliche Veterinaernachrichten | avnnummer, avn_typ |
-| `Spg` | Gesundheitsstrukturplaene | spgnummer, osg_typ, rsg_typ, rsg_land |
-| `PruefGewO` | Gewerberechtliche Pruefungen | pruefgewo_typ |
-
-**Mrp-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `einbringer` | string | Ministeriumskuerzel (BKA, BMF, BMI, etc.) |
-| `sitzungsnummer` | string | Sitzungsnummer |
-| `gesetzgebungsperiode` | string | Gesetzgebungsperiode (z.B. "27") |
-
-**Erlaesse-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `bundesministerium` | string | Bundesministerium |
-| `abteilung` | string | Abteilung |
-| `fundstelle` | string | Quellenangabe |
-
-**Upts-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `partei` | string | SPÖ, ÖVP, FPÖ, GRÜNE, NEOS, BZÖ |
-
-**Avsv-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `dokumentart` | string | Dokumentart |
-| `urheber` | string | ASVG, BSVG, GSVG, B-KUVG, FSVG, GehG |
-| `avsvnummer` | string | AVSV-Nummer |
-
-**Avn-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `avnnummer` | string | AVN-Nummer |
-| `avn_typ` | string | Kundmachung, Verordnung, Erlass |
-
-**Spg-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `spgnummer` | string | SPG-Nummer |
-| `osg_typ` | string | ÖSG, ÖSG - Großgeräteplan |
-| `rsg_typ` | string | RSG, RSG - Großgeräteplan |
-| `rsg_land` | string | Bundesland fuer RSG |
-
-**PruefGewO-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `pruefgewo_typ` | string | Befähigungsprüfung, Eignungsprüfung, Meisterprüfung |
-
-**KmGer-spezifische Parameter:**
-
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `kmger_typ` | string | Geschaeftsordnung, Geschaeftsverteilung |
-| `gericht` | string | Gerichtsname |
-
-**Beispiele:**
-
-```
-applikation="Mrp", suchworte="Budget"
-applikation="Erlaesse", bundesministerium="BMF"
-applikation="Upts", partei="SPÖ"
-applikation="Avsv", urheber="ASVG"
-```
-
----
-
-### ris_history
-
-Durchsucht die Aenderungshistorie von Rechtsdokumenten. Ermoeglicht das Nachverfolgen von Dokumenterstellung, -aenderung und -loeschung.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `applikation` | string | Ja | Anwendung (30 Optionen, siehe unten) |
-| `aenderungen_von` | string | Nein | Aenderungen ab Datum (YYYY-MM-DD) |
-| `aenderungen_bis` | string | Nein | Aenderungen bis Datum (YYYY-MM-DD) |
-| `include_deleted` | boolean | Nein | Geloeschte Dokumente einbeziehen (Standard: false) |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Verfuegbare Anwendungen (30):**
-
-| Kategorie | Anwendungen |
-|-----------|-------------|
-| Bundesrecht | Bundesnormen, BgblAuth, BgblAlt, BgblPdf, RegV |
-| Landesrecht | Landesnormen, LgblAuth, Lgbl, LgblNO, Vbl, Gemeinderecht, GemeinderechtAuth |
-| Judikatur | Justiz, Vfgh, Vwgh, Bvwg, Lvwg, Dsk, Gbk, Pvak, AsylGH |
-| Sonstige | Bvb, Mrp, Erlaesse, PruefGewO, Avsv, Spg, KmGer, Dok, Normenliste |
-
-**Beispiele:**
-
-```
-applikation="Bundesnormen", aenderungen_von="2024-01-01", aenderungen_bis="2024-01-31"
-applikation="Justiz", aenderungen_von="2024-06-01"
-applikation="Vfgh", aenderungen_von="2024-01-01", include_deleted=true
-```
-
----
-
-### ris_verordnungen
-
-Durchsucht Verordnungsblaetter der Laender.
-
-**Wichtig:** Derzeit sind nur Daten aus **Tirol** verfuegbar (seit 1. Januar 2022). Andere Bundeslaender haben ihre Verordnungsblaetter noch nicht im RIS veroeffentlicht.
-
-| Parameter | Typ | Pflicht | Beschreibung |
-|-----------|-----|---------|--------------|
-| `suchworte` | string | Nein | Volltextsuche |
-| `titel` | string | Nein | Suche in Titeln |
-| `bundesland` | string | Nein | Wien, Niederoesterreich, Oberoesterreich, Salzburg, Tirol, Vorarlberg, Kaernten, Steiermark, Burgenland |
-| `kundmachungsnummer` | string | Nein | Kundmachungsnummer |
-| `kundmachungsdatum_von` | string | Nein | Kundmachungsdatum ab (YYYY-MM-DD) |
-| `kundmachungsdatum_bis` | string | Nein | Kundmachungsdatum bis (YYYY-MM-DD) |
-| `seite` | number | Nein | Seitennummer |
-| `limit` | number | Nein | Ergebnisse pro Seite |
-| `response_format` | string | Nein | "markdown" oder "json" |
-
-**Beispiele:**
-
-```
-bundesland="Tirol", suchworte="Parkordnung"
-kundmachungsdatum_von="2024-01-01", bundesland="Tirol"
-```
-
-## Anwendungsbeispiele
-
-### Mietrecht im ABGB recherchieren
-
-```
-ris_bundesrecht: titel="ABGB", suchworte="Mietrecht"
-```
-
-Findet alle Paragraphen des ABGB, die sich mit Mietrecht befassen.
-
-### VfGH-Entscheidung zu Grundrechten suchen
-
-```
-ris_judikatur: gericht="Vfgh", suchworte="Grundrecht Meinungsfreiheit"
-```
-
-Durchsucht Entscheidungen des Verfassungsgerichtshofs zu Grundrechten.
-
-### Salzburger Bauordnung finden
-
-```
-ris_landesrecht: bundesland="Salzburg", titel="Bauordnung"
-```
-
-Findet die Bauordnung des Landes Salzburg.
-
-### BGBl nach Nummer und Jahr
-
-```
-ris_bundesgesetzblatt: bgblnummer="120", jahrgang="2023", teil="1"
-```
-
-Findet ein spezifisches Bundesgesetzblatt.
-
-### OGH-Entscheidung nach Geschaeftszahl
-
-```
-ris_judikatur: gericht="Justiz", geschaeftszahl="5Ob234/20b"
-```
-
-Findet eine spezifische OGH-Entscheidung anhand der Geschaeftszahl.
-
-### Volltext eines Dokuments abrufen
-
-```
-ris_dokument: dokumentnummer="NOR40052761"
-```
-
-Ruft den vollstaendigen Text eines Dokuments ab, dessen Nummer aus einer vorherigen Suche stammt.
-
-## Entwicklung
-
-### NPM Scripts
-
-| Script | Beschreibung |
-|--------|--------------|
-| `npm run dev` | Startet Server mit tsx (Hot Reload) |
-| `npm run build` | Kompiliert TypeScript |
-| `npm start` | Startet kompilierte Version |
-| `npm run check` | Typecheck + Lint + Tests |
-| `npm test` | Fuehrt alle Tests aus |
-| `npm run test:watch` | Tests im Watch-Modus |
-| `npm run inspect` | MCP Inspector zum Testen |
-
-### Projektstruktur
-
-```
-ris-mcp-ts/
-├── src/
-│   ├── index.ts       # Einstiegspunkt (stdio Transport)
-│   ├── server.ts      # MCP Server mit 12 Tools
-│   ├── client.ts      # HTTP Client fuer RIS API
-│   ├── parser.ts      # JSON Parsing
-│   ├── types.ts       # Zod Schemas + TypeScript Typen
-│   ├── formatting.ts  # Ausgabeformatierung
-│   └── __tests__/     # Tests
-├── dist/              # Kompiliertes JavaScript
-├── docs/              # API Dokumentation
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-### API Referenz
-
-Dieser Server verwendet die oesterreichische RIS API v2.6:
-
-- Dokumentation: https://data.bka.gv.at/ris/api/v2.6/
-
-## Lizenz
-
-MIT
-
-Dieses Projekt nutzt die Open Government Data API des oesterreichischen Bundeskanzleramts.
+Built on the [Open Government Data API](https://data.bka.gv.at/ris/api/v2.6/) provided by the Austrian Federal Chancellery (Bundeskanzleramt).
