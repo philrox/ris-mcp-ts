@@ -189,6 +189,9 @@ Die README ist aktuell auf Deutsch und sehr ausführlich. Für Open Source:
   - License
 - [x] Detaillierte Tool-Referenz nach `docs/TOOLS.md` oder in die README als klappbare Sections (`<details>`)
 - [ ] Screenshots oder GIFs der Nutzung (optional aber empfehlenswert)
+  - Screenshot: Claude Desktop Konversation — User fragt nach einem Bundesgesetz, Tool gibt formatiertes Ergebnis zurück
+  - GIF/Screenshot: Kompletter Workflow — Suche → Ergebnisliste → Volltext abrufen mit `ris_dokument`
+  - Screenshot: MCP Inspector Ansicht — zeigt die 12 verfügbaren Tools mit Parametern
 
 ### 5.2 LICENSE Datei
 
@@ -209,7 +212,13 @@ Die README ist aktuell auf Deutsch und sehr ausführlich. Für Open Source:
 
 - [x] Erstellen mit initialem Release (v1.0.0)
 - [x] Keep a Changelog Format verwenden (https://keepachangelog.com)
-- [ ] Ggf. `conventional-commits` + Tooling für automatische Changelog-Generierung
+- [x] Conventional Commits + Tooling für automatische Changelog-Generierung
+  - `commitlint` + `@commitlint/config-conventional` installieren
+  - Husky `commit-msg` Hook: `npx --no -- commitlint --edit $1` (validiert Commit-Messages)
+  - Format: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`, `style:`
+  - Scope optional: `feat(parser):`, `fix(client):`
+  - Breaking Changes: `feat!:` oder `BREAKING CHANGE:` im Body
+  - Optional: `release-please` GitHub Action für automatische Changelog-Generierung + Versioning
 
 ### 5.5 .gitignore anpassen
 
@@ -226,6 +235,10 @@ Aktuell ignoriert `docs/` → das muss weg, docs sollen im Repo sein:
 - [x] **Issue Templates** erstellen (Bug Report, Feature Request)
 - [x] **PR Template** erstellen
 - [ ] **Branch Protection** für `main` (require PR, require CI pass)
+  - GitHub Web: Settings → Branches → Add branch protection rule → Branch name: `main`
+  - Aktivieren: "Require a pull request before merging" (kein direkter Push auf main)
+  - Aktivieren: "Require status checks to pass before merging" → Status check: `check` (CI Job)
+  - Optional: "Require conversation resolution before merging"
 
 ---
 
