@@ -310,18 +310,22 @@ Aktuell ignoriert `docs/` → das muss weg, docs sollen im Repo sein:
 
 Aktuell veraltete Packages:
 
-| Package                     | Current | Latest | Breaking? |
-| --------------------------- | ------- | ------ | --------- |
-| `@modelcontextprotocol/sdk` | 1.25.3  | 1.26.0 | Nein      |
-| `vitest`                    | 1.6.1   | 4.0.18 | **Ja**    |
-| `zod`                       | 3.25.76 | 4.3.6  | **Ja**    |
-| `@types/node`               | 20.x    | 25.x   | Minor     |
-| `eslint`                    | 9.x     | 10.x   | **Ja**    |
+| Package                     | Current  | Latest | Breaking? | Status                   |
+| --------------------------- | -------- | ------ | --------- | ------------------------ |
+| `@modelcontextprotocol/sdk` | 1.26.0   | 1.26.0 | —         | ✅ Aktuell               |
+| `vitest`                    | 4.0.18   | 4.0.18 | —         | ✅ Aktuell               |
+| `@vitest/coverage-v8`       | 4.0.18   | 4.0.18 | —         | ✅ Aktuell               |
+| `zod`                       | 3.25.76  | 4.3.6  | **Ja**    | ⏳ Evaluiert, nach Release |
+| `@types/node`               | 22.19.10 | 25.x   | Minor     | ✅ Auf 22.x LTS aktualisiert |
+| `eslint`                    | 9.39.2   | 10.0.0 | **Ja**    | ⛔ Blocked — Ecosystem   |
 
-- [ ] SDK + Hono zuerst (non-breaking `npm audit fix`)
-- [ ] Vitest 4.x Update (Test-Syntax prüfen)
-- [ ] Zod 4 evaluieren (größeres Refactoring, kann auch nach Release)
-- [ ] ESLint 10 evaluieren (Config-Format ggf. anpassen)
+- [x] SDK + Hono zuerst (non-breaking `npm audit fix`) — SDK 1.26.0, 0 Vulnerabilities
+- [x] Vitest 4.x Update (Test-Syntax prüfen) — Vitest 4.0.18, alle 611 Tests grün
+- [x] `@types/node` von 20.x auf 22.x (LTS) aktualisiert
+- [x] Zod 4 evaluieren (größeres Refactoring, kann auch nach Release)
+  - **Ergebnis:** Zod 3.25.76 ist die "Bridge"-Version mit `zod/v3` und `zod/v4` Exports. MCP SDK 1.26.0 akzeptiert `"^3.25 || ^4.0"`. Migration auf Zod 4 erfordert Anpassungen an allen 12 Tool-Dateien + `types.ts` (z.B. geänderte API für `.optional()`, `.default()`, `z.enum()`). Empfehlung: Nach dem initialen Release migrieren, da Zod 3.25 voll kompatibel bleibt.
+- [x] ESLint 10 evaluieren (Config-Format ggf. anpassen)
+  - **Ergebnis:** ESLint 10.0.0 released am 07.02.2026. **Blocker:** `typescript-eslint` unterstützt ESLint 10 noch nicht (Issue [#11952](https://github.com/typescript-eslint/typescript-eslint/issues/11952), Status: "blocked by another issue"). `eslint-plugin-import-x` ebenfalls nicht (Issue [#438](https://github.com/un-ts/eslint-plugin-import-x/issues/438)). Workaround via `@eslint/compat` möglich aber nicht empfohlen. Empfehlung: Warten bis Ecosystem-Support da ist.
 
 ---
 

@@ -40,7 +40,7 @@
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/js": "^9.39.2",
-    "@types/node": "^20.0.0",
+    "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "@vitest/coverage-v8": "^4.0.18",
