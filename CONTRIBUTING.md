@@ -4,7 +4,7 @@ Thank you for your interest in contributing to the RIS MCP Server! This guide wi
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 18.0.0
+- [Node.js](https://nodejs.org/) >= 20.0.0
 - npm (comes with Node.js)
 
 ## Getting Started
