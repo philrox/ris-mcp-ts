@@ -23,6 +23,7 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "prebuild": "npm run typecheck",
+    "prepublishOnly": "npm run check && npm run build",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -68,5 +69,19 @@
     "law"
   ],
   "author": "philrox <phil@resultsbymagic.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/philrox/ris-mcp-ts.git"
+  },
+  "homepage": "https://github.com/philrox/ris-mcp-ts#readme",
+  "bugs": {
+    "url": "https://github.com/philrox/ris-mcp-ts/issues"
+  },
+  "files": [
+    "dist/",
+    "!dist/__tests__/",
+    "README.md",
+    "LICENSE"
+  ]
 }

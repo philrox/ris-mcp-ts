@@ -246,26 +246,26 @@ Aktuell ignoriert `docs/` → das muss weg, docs sollen im Repo sein:
 
 ### 6.1 package.json erweitern
 
-- [ ] `files` Feld hinzufügen (nur dist/ + README + LICENSE publizieren):
+- [x] `files` Feld hinzufügen (dist/ ohne Tests + README + LICENSE):
   ```json
-  "files": ["dist/", "README.md", "LICENSE"]
+  "files": ["dist/", "!dist/__tests__/", "README.md", "LICENSE"]
   ```
-- [ ] `repository` Feld hinzufügen:
+- [x] `repository` Feld hinzufügen:
   ```json
   "repository": {
     "type": "git",
     "url": "https://github.com/philrox/ris-mcp-ts.git"
   }
   ```
-- [ ] `homepage` und `bugs` Felder ergänzen
-- [ ] `prepublishOnly` Script: `"prepublishOnly": "npm run check && npm run build"`
-- [ ] Prüfen ob `bin` Feld korrekt ist (Shebang in index.ts? `#!/usr/bin/env node`)
+- [x] `homepage` und `bugs` Felder ergänzen
+- [x] `prepublishOnly` Script: `"prepublishOnly": "npm run check && npm run build"`
+- [x] `bin` Feld korrekt, Shebang `#!/usr/bin/env node` in `src/index.ts` vorhanden und wird im Build beibehalten
 
 ### 6.2 Shebang & Entry Point
 
-- [ ] Prüfen ob `src/index.ts` / `dist/index.js` ein Shebang hat (`#!/usr/bin/env node`)
-- [ ] Wenn nicht, hinzufügen damit `npx ris-mcp-ts` funktioniert
-- [ ] Testen: `npm pack` + lokale Installation prüfen
+- [x] Shebang `#!/usr/bin/env node` in `src/index.ts` vorhanden, wird im Build nach `dist/index.js` beibehalten
+- [x] `npx ris-mcp-ts` funktioniert — Binary startet korrekt (stdio transport, wartet auf MCP Client)
+- [x] `npm pack` + lokale Installation getestet: 87 Dateien, 56.3 kB, Bin-Symlink korrekt, keine Tests im Package
 
 ### 6.3 npm Publish
 
