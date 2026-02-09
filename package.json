@@ -1,6 +1,6 @@
 {
   "name": "ris-mcp-ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP Server for Austrian Legal Information System (RIS) - TypeScript",
   "type": "module",
   "main": "dist/index.js",
