@@ -94,7 +94,14 @@ Tests use [Vitest](https://vitest.dev/) and are located in `src/__tests__/`.
    npm run check
    ```
 
-3. Commit your changes with a clear, descriptive message.
+3. Commit your changes following [Conventional Commits](https://www.conventionalcommits.org/):
+
+   ```bash
+   git commit -m "feat: add new search parameter"
+   git commit -m "fix: handle empty API response"
+   ```
+
+   Common prefixes: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`
 
 4. Push to your fork and open a Pull Request against `main`.
 
@@ -111,6 +118,19 @@ Found a bug or have a feature request? Please [open an issue](../../issues) usin
 
 - **Bug Report** — For reporting bugs with reproduction steps
 - **Feature Request** — For suggesting new features or improvements
+
+## Releasing (Maintainers)
+
+Releases are automated via GitHub Actions with [OIDC trusted publishing](https://docs.npmjs.com/trusted-publishers/) — no npm tokens required.
+
+```bash
+npm version patch   # or minor / major
+git push && git push --tags
+```
+
+This will:
+1. Bump the version in `package.json` and create a git tag (e.g., `v1.0.1`)
+2. Trigger the release workflow which runs all checks, builds, creates a GitHub Release, and publishes to npm with provenance attestations
 
 ## Questions?
 
