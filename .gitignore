@@ -10,4 +10,5 @@ dist/
 coverage/
 docs/*.pdf
 specs/
+.mcpregistry_*
 
