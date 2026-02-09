@@ -58,7 +58,7 @@ npm install -g ris-mcp-ts
 
 ### Claude Desktop
 
-Add to your Claude Desktop config:
+Add to your Claude Desktop config (Settings > Developer > Edit Config):
 
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
@@ -74,6 +74,8 @@ Add to your Claude Desktop config:
 }
 ```
 
+> **Note:** The "Add custom connector" UI in Claude Desktop only supports remote MCP servers (HTTP/SSE). Local stdio servers like this one must be configured via the JSON file.
+
 ### Claude Code
 
 Add to your project or user settings:
@@ -82,13 +84,44 @@ Add to your project or user settings:
 claude mcp add ris -- npx -y ris-mcp-ts
 ```
 
-### VS Code (Copilot)
+### VS Code (GitHub Copilot)
 
 Add to `.vscode/mcp.json` in your project:
 
 ```json
 {
   "servers": {
+    "ris": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "ris-mcp-ts"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project (or `~/.cursor/mcp.json` for global access):
+
+```json
+{
+  "mcpServers": {
+    "ris": {
+      "command": "npx",
+      "args": ["-y", "ris-mcp-ts"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to your Windsurf MCP config at `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
     "ris": {
       "command": "npx",
       "args": ["-y", "ris-mcp-ts"]

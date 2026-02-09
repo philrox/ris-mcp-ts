@@ -34,6 +34,29 @@ Thank you for your interest in contributing to the RIS MCP Server! This guide wi
    npm run check
    ```
 
+## Architecture Overview
+
+The server is built on the [Model Context Protocol SDK](https://modelcontextprotocol.io/) and communicates via **stdio transport** — it reads JSON-RPC messages from stdin and writes responses to stdout.
+
+```
+src/
+├── index.ts        # Entry point — creates stdio transport, starts server
+├── server.ts       # MCP server init, registers all tools
+├── client.ts       # HTTP client for the RIS API (fetch, error classes, SSRF protection)
+├── types.ts        # Zod schemas + TypeScript types for API params/responses
+├── parser.ts       # JSON parsing and response normalization
+├── formatting.ts   # Output formatting (markdown/json) + character truncation
+├── helpers.ts      # Shared helpers for tool handlers (param building, error formatting)
+├── constants.ts    # Static mappings, enum values, config
+└── tools/          # One file per tool — each exports a register function
+    ├── index.ts    # registerAllTools() barrel
+    ├── bundesrecht.ts
+    ├── judikatur.ts
+    └── ...
+```
+
+**Data flow:** MCP Client → `index.ts` (stdio) → `server.ts` (routing) → `tools/*.ts` (handler) → `client.ts` (HTTP) → RIS API
+
 ## Development Workflow
 
 | Command | Description |
@@ -42,14 +65,66 @@ Thank you for your interest in contributing to the RIS MCP Server! This guide wi
 | `npm run build` | Compile TypeScript |
 | `npm start` | Run compiled version |
 | `npm run check` | Run typecheck + lint + format check + tests |
-| `npm run inspect` | Test with MCP Inspector |
+| `npm run inspect` | Test with MCP Inspector (see below) |
 
 ### Useful shortcuts
 
 - **`npm run dev`** — Fastest way to test changes during development
 - **`npm run check`** — Run this before committing to catch all issues at once
 
-## Code Style
+### MCP Inspector
+
+The [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) is a web-based UI for testing MCP servers interactively:
+
+```bash
+npm run inspect
+```
+
+This opens a browser where you can:
+- See all registered tools and their schemas
+- Call tools with custom parameters and inspect responses
+- Debug issues without needing a full MCP client
+
+### Testing with MCP Clients
+
+To test your local changes in a real client (Claude Desktop, VS Code, etc.), point the config to your local build instead of the npm package:
+
+**Claude Desktop** (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ris-dev": {
+      "command": "node",
+      "args": ["/absolute/path/to/ris-mcp-ts/dist/index.js"]
+    }
+  }
+}
+```
+
+**Claude Code:**
+
+```bash
+claude mcp add ris-dev -- node /absolute/path/to/ris-mcp-ts/dist/index.js
+```
+
+Run `npm run build` after each change (or use `npm run dev` in a separate terminal for hot reload during development).
+
+## Code Conventions
+
+### Language
+
+- **Tool descriptions and error messages** are written in **German** (the target audience is Austrian legal professionals)
+- Code, comments, and documentation are in **English**
+
+### TypeScript / ESM
+
+- The project uses **ES modules** (`"type": "module"` in package.json) — use `.js` extensions in imports (e.g., `import { ... } from './client.js'`)
+- Use **`type` imports** for type-only imports (`import type { ... }`)
+- No explicit `any` — use `unknown` and narrow types instead
+- Prefix intentionally unused variables with `_` (e.g., `_unusedParam`)
+
+### Formatting & Linting
 
 This project uses **Prettier** for formatting and **ESLint** for linting. Pre-commit hooks via **Husky** and **lint-staged** run both automatically on staged files.
 
@@ -79,6 +154,76 @@ Tests use [Vitest](https://vitest.dev/) and are located in `src/__tests__/`.
 - Co-locate tests with the module they cover (e.g., `client.test.ts` tests `client.ts`)
 - Use descriptive test names that explain the expected behavior
 - Mock external HTTP calls — avoid hitting the real RIS API in unit tests
+
+## Adding a New Tool
+
+The most common contribution is adding a new RIS tool. Each tool lives in its own file under `src/tools/` and follows a consistent pattern:
+
+### 1. Create the tool file
+
+Create `src/tools/<name>.ts` with this structure:
+
+```typescript
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { searchRIS } from '../client.js';
+import {
+  buildBaseParams,
+  addOptionalParams,
+  executeSearchTool,
+  hasAnyParam,
+  createValidationErrorResponse,
+} from '../helpers.js';
+
+export function register<Name>Tool(server: McpServer): void {
+  server.tool(
+    'ris_<name>',
+    'German description of the tool',
+    {
+      // Zod schema for parameters
+      suchworte: z.string().optional().describe('Volltextsuche'),
+      titel: z.string().optional().describe('Suche im Titel'),
+      // ... more params
+    },
+    async (params) => {
+      // 1. Validate that at least one search param is provided
+      if (!hasAnyParam(params, ['suchworte', 'titel'])) {
+        return createValidationErrorResponse(['suchworte', 'titel']);
+      }
+
+      // 2. Build API request params
+      const apiParams = buildBaseParams('ApplikationName', params);
+      addOptionalParams(apiParams, params, ['suchworte', 'titel']);
+
+      // 3. Execute search with standard error handling
+      return executeSearchTool(apiParams, params.response_format);
+    },
+  );
+}
+```
+
+### 2. Register in the barrel file
+
+Add your tool to `src/tools/index.ts`:
+
+```typescript
+import { register<Name>Tool } from './<name>.js';
+
+export function registerAllTools(server: McpServer): void {
+  // ... existing tools
+  register<Name>Tool(server);
+}
+```
+
+### 3. Write tests
+
+Create `src/__tests__/<name>.test.ts` — mock HTTP calls, don't hit the real API. See existing test files for examples.
+
+### 4. Run checks
+
+```bash
+npm run check
+```
 
 ## Submitting Changes
 
