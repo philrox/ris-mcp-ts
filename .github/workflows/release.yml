@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,10 +37,66 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Generate release notes
+        id: notes
+        run: |
+          # Find previous tag
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+
+          if [ "$PREV_TAG" = "$CURRENT_TAG" ]; then
+            # First release — use all commits
+            COMMITS=$(git log --oneline --no-merges "$CURRENT_TAG")
+          else
+            COMMITS=$(git log --oneline --no-merges "$PREV_TAG..$CURRENT_TAG")
+          fi
+
+          # Group commits by conventional commit type
+          FEATURES=$(echo "$COMMITS" | grep -E '^\w+ feat(\(.+\))?:' | sed 's/^\w\+ feat\(([^)]*)\)\?:\s*//' || true)
+          FIXES=$(echo "$COMMITS" | grep -E '^\w+ fix(\(.+\))?:' | sed 's/^\w\+ fix\(([^)]*)\)\?:\s*//' || true)
+          DOCS=$(echo "$COMMITS" | grep -E '^\w+ docs(\(.+\))?:' | sed 's/^\w\+ docs\(([^)]*)\)\?:\s*//' || true)
+          CI_CHORE=$(echo "$COMMITS" | grep -E '^\w+ (ci|chore|refactor|test)(\(.+\))?:' | sed 's/^\w\+ \w\+\(([^)]*)\)\?:\s*//' || true)
+
+          # Build release notes
+          NOTES="## What's Changed"$'\n'
+
+          if [ -n "$FEATURES" ]; then
+            NOTES+=$'\n'"### Features"$'\n'
+            while IFS= read -r line; do
+              NOTES+="- $line"$'\n'
+            done <<< "$FEATURES"
+          fi
+
+          if [ -n "$FIXES" ]; then
+            NOTES+=$'\n'"### Bug Fixes"$'\n'
+            while IFS= read -r line; do
+              NOTES+="- $line"$'\n'
+            done <<< "$FIXES"
+          fi
+
+          if [ -n "$DOCS" ]; then
+            NOTES+=$'\n'"### Documentation"$'\n'
+            while IFS= read -r line; do
+              NOTES+="- $line"$'\n'
+            done <<< "$DOCS"
+          fi
+
+          if [ -n "$CI_CHORE" ]; then
+            NOTES+=$'\n'"### Other"$'\n'
+            while IFS= read -r line; do
+              NOTES+="- $line"$'\n'
+            done <<< "$CI_CHORE"
+          fi
+
+          NOTES+=$'\n'"**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG"
+
+          # Write to file for the release step
+          echo "$NOTES" > release-notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
 
       - name: Publish to npm
         run: npm publish --provenance --access public
