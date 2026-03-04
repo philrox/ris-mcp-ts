@@ -5,6 +5,8 @@
  * for deployment on cloud platforms (e.g., AWS Lightsail).
  */
 
+import crypto from 'node:crypto';
+
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request, Response } from 'express';
@@ -34,13 +36,15 @@ app.post('/mcp', async (req: Request, res: Response) => {
   if (sessionId) {
     const existing = sessions.get(sessionId);
     if (existing) {
-      await existing.handleRequest(req, res);
+      await existing.handleRequest(req, res, req.body);
       return;
     }
   }
 
   // Create new session
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => crypto.randomUUID(),
+  });
   const server = new McpServer({ name: 'ris-mcp', version: '1.0.0' });
 
   registerAllTools(server);
@@ -57,7 +61,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
     sessions.set(transport.sessionId, transport);
   }
 
-  await transport.handleRequest(req, res);
+  await transport.handleRequest(req, res, req.body);
 });
 
 app.get('/mcp', (req: Request, res: Response) => {
@@ -66,7 +70,7 @@ app.get('/mcp', (req: Request, res: Response) => {
   if (sessionId) {
     const transport = sessions.get(sessionId);
     if (transport) {
-      transport.handleRequest(req, res);
+      transport.handleRequest(req, res, req.body);
       return;
     }
   }
@@ -80,7 +84,7 @@ app.delete('/mcp', (req: Request, res: Response) => {
   if (sessionId) {
     const transport = sessions.get(sessionId);
     if (transport) {
-      transport.handleRequest(req, res);
+      transport.handleRequest(req, res, req.body);
       return;
     }
   }
