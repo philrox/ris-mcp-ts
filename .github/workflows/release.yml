@@ -100,3 +100,54 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --provenance --access public
+
+  deploy-lightsail:
+    name: Deploy to Lightsail
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-central-1
+      SERVICE_NAME: ris-mcp
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Lightsail plugin
+        run: |
+          curl -s "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" \
+            -o /usr/local/bin/lightsailctl && chmod +x /usr/local/bin/lightsailctl
+
+      - name: Build and push image
+        run: |
+          docker build --platform linux/amd64 -t $SERVICE_NAME .
+          aws lightsail push-container-image \
+            --service-name $SERVICE_NAME \
+            --label $SERVICE_NAME \
+            --image $SERVICE_NAME:latest \
+            --region $AWS_REGION 2>&1 | tee push-output.txt
+
+      - name: Deploy
+        run: |
+          IMAGE=$(grep -oP '":[\w.-]+"' push-output.txt | tr -d '"')
+          aws lightsail create-container-service-deployment \
+            --service-name $SERVICE_NAME \
+            --region $AWS_REGION \
+            --containers "{
+              \"$SERVICE_NAME\": {
+                \"image\": \"$IMAGE\",
+                \"ports\": {\"3000\": \"HTTP\"},
+                \"environment\": {}
+              }
+            }" \
+            --public-endpoint "{
+              \"containerName\": \"$SERVICE_NAME\",
+              \"containerPort\": 3000,
+              \"healthCheck\": {\"path\": \"/health\", \"intervalSeconds\": 30}
+            }"
