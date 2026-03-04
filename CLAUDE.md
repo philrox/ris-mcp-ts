@@ -12,16 +12,18 @@ npm run build
 ## Development Commands
 
 ```bash
-npm run dev             # Start with tsx (hot reload)
+npm run dev             # Start with tsx (hot reload, stdio)
+npm run dev:http        # Start HTTP server with tsx (hot reload)
 npm run build           # Compile TypeScript (runs typecheck first)
-npm start               # Run compiled version
+npm start               # Run compiled version (stdio)
+npm run start:http      # Run HTTP server (Streamable HTTP transport)
 npm run check           # Run typecheck + lint + format:check + tests
 ```
 
 ## Testing
 
 ```bash
-npm test                # Run all unit tests (611 tests, 10 files)
+npm test                # Run all unit tests (620 tests, 11 files)
 npm run test:watch      # Run tests in watch mode
 npm run test:coverage   # Tests with V8 coverage report
 npm run test:integration # Integration tests (separate config, requires network)
@@ -50,6 +52,7 @@ Pre-commit hooks (Husky) auto-run `prettier --write` and `eslint --fix` on stage
 ```
 src/
 ├── index.ts           # Entry point (stdio transport)
+├── http.ts            # Entry point (Streamable HTTP transport, Express)
 ├── server.ts          # MCP server init, delegates to tools/
 ├── client.ts          # HTTP client for RIS API, error classes, URL construction
 ├── types.ts           # Zod schemas + TypeScript types
@@ -74,6 +77,7 @@ src/
 └── __tests__/
     ├── client.test.ts
     ├── document-matching.test.ts
+    ├── http.test.ts
     ├── edge-cases.test.ts
     ├── formatting.test.ts
     ├── history.test.ts
@@ -133,8 +137,41 @@ Each tool lives in `src/tools/<name>.ts` and exports a `register<Name>Tool(serve
 
 GitHub Actions runs on push/PR to main:
 - **CI**: Matrix test (Node 18, 20, 22) → `npm run check` + coverage
-- **Release**: Tag push (`v*`) → check + build + GitHub Release + npm publish
+- **Release**: Tag push (`v*`) → check + build + GitHub Release + npm publish + **Lightsail deploy**
 - **CodeQL**: Weekly security scanning
+
+### Deployment Flow
+
+```
+feature branch → PR → merge to main → git tag v1.x.x → push tag → CI auto-deploys
+```
+
+No manual deployment needed. The release workflow handles: npm publish → Docker build → Lightsail push → deployment creation.
+
+## Hosting (AWS Lightsail)
+
+| Property | Value |
+|----------|-------|
+| **Platform** | AWS Lightsail Container Service |
+| **Transport** | Streamable HTTP (MCP Spec v2025-03-26) |
+| **Region** | eu-central-1 |
+| **Power** | Nano (0.25 vCPU, 512 MB RAM) |
+| **Port** | 3000 |
+| **URL** | `https://ris-mcp.6jecj1g0sgqwt.eu-central-1.cs.amazonlightsail.com` |
+| **Health Check** | `GET /health` |
+| **MCP Endpoint** | `POST /mcp` |
+
+### Architecture: Two Transports
+
+- **stdio** (`src/index.ts`): Singleton McpServer, used by local MCP clients (Claude Desktop local, Claude Code)
+- **HTTP** (`src/http.ts`): Per-session McpServer instances, Express + StreamableHTTPServerTransport. Session map stores active transports, cleanup via `transport.onclose`.
+
+### Key Decisions
+
+- `express.json()` parses body → must pass `req.body` as 3rd arg to `transport.handleRequest()`
+- `sessionIdGenerator: () => crypto.randomUUID()` for stateful sessions
+- `sessions.set()` called AFTER `handleRequest()` (SDK generates sessionId during initialize)
+- Dockerfile uses `HUSKY=0` env + `--ignore-scripts` for production npm ci
 
 ## MCP Tools (12)
 
@@ -181,7 +218,18 @@ Bundesnormen, Landesnormen, Justiz, Vfgh, Vwgh, Bvwg, Lvwg, BgblAuth, BgblAlt, B
 | REGV | Government bills |
 | MRP, ERL | Cabinet protocols, decrees |
 
+## Files Overview (Deployment)
+
+| File | Purpose |
+|------|---------|
+| `src/http.ts` | Express + Streamable HTTP entry point |
+| `src/__tests__/http.test.ts` | HTTP transport tests (9 tests) |
+| `Dockerfile` | Multi-stage build (node:22-alpine) |
+| `.dockerignore` | Docker build excludes |
+| `.github/workflows/release.yml` | CI/CD: release + Lightsail deploy |
+
 ## Documentation
 
 - API Docs: `docs/Dokumentation_OGD-RIS_API.md` (Markdown) / `docs/Dokumentation_OGD-RIS_API.pdf`
+- Deployment Spec: `specs/AWS_LIGHTSAIL_DEPLOYMENT.md`
 - RIS API v2.6: https://data.bka.gv.at/ris/api/v2.6/
