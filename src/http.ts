@@ -56,12 +56,13 @@ app.post('/mcp', async (req: Request, res: Response) => {
   };
 
   await server.connect(transport);
+  await transport.handleRequest(req, res, req.body);
 
-  if (transport.sessionId) {
+  // Store session AFTER handleRequest so the sessionId is available
+  // (the SDK generates the sessionId during initialize handling)
+  if (transport.sessionId && !sessions.has(transport.sessionId)) {
     sessions.set(transport.sessionId, transport);
   }
-
-  await transport.handleRequest(req, res, req.body);
 });
 
 app.get('/mcp', (req: Request, res: Response) => {
