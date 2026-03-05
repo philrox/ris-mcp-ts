@@ -10,7 +10,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import request from 'supertest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { app, sessions } from '../http.js';
+import { app, mcpLimiter, sessions } from '../http.js';
 import { registerAllTools } from '../tools/index.js';
 
 // ---------------------------------------------------------------------------
@@ -63,6 +63,8 @@ describe('HTTP transport (http.ts)', () => {
     vi.clearAllMocks();
     sessions.clear();
     capturedOnClose = undefined;
+    mcpLimiter.resetKey('::ffff:127.0.0.1');
+    mcpLimiter.resetKey('unknown');
   });
 
   // ---------------------------------------------------------------------------
@@ -197,6 +199,85 @@ describe('HTTP transport (http.ts)', () => {
       expect(res.body).toEqual({
         error: 'Keine gültige Session. Starte mit POST /mcp.',
       });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Rate Limiting
+  // ---------------------------------------------------------------------------
+
+  describe('Rate limiting', () => {
+    it('should return 429 on /mcp after exceeding MCP rate limit', async () => {
+      mockHandleRequest.mockImplementation(
+        (_req: unknown, res: { writeHead: (code: number) => void; end: () => void }) => {
+          res.writeHead(200);
+          res.end();
+        },
+      );
+
+      // Fire requests exceeding the MCP limit (60/min)
+      const results = [];
+      for (let i = 0; i < 65; i++) {
+        results.push(
+          request(app).post('/mcp').send({ jsonrpc: '2.0', method: 'initialize', id: i }),
+        );
+      }
+      const responses = await Promise.all(results);
+
+      const rateLimited = responses.some((res) => res.status === 429);
+      expect(rateLimited).toBe(true);
+    });
+
+    it('should not rate-limit /health at the MCP rate', async () => {
+      // Health endpoint should tolerate many rapid requests
+      const results = [];
+      for (let i = 0; i < 10; i++) {
+        results.push(request(app).get('/health'));
+      }
+      const responses = await Promise.all(results);
+
+      const allOk = responses.every((res) => res.status === 200);
+      expect(allOk).toBe(true);
+    });
+
+    it('should include standard rate limit headers in /mcp responses', async () => {
+      mockHandleRequest.mockImplementation(
+        (_req: unknown, res: { writeHead: (code: number) => void; end: () => void }) => {
+          res.writeHead(200);
+          res.end();
+        },
+      );
+
+      const res = await request(app)
+        .post('/mcp')
+        .send({ jsonrpc: '2.0', method: 'initialize', id: 1 });
+
+      // Standard draft-7 combined header: "limit=N, remaining=N, reset=N"
+      expect(res.headers).toHaveProperty('ratelimit');
+      expect(res.headers).toHaveProperty('ratelimit-policy');
+      expect(res.headers['ratelimit']).toMatch(/limit=\d+, remaining=\d+, reset=\d+/);
+    });
+
+    it('should return JSON error body on 429', async () => {
+      mockHandleRequest.mockImplementation(
+        (_req: unknown, res: { writeHead: (code: number) => void; end: () => void }) => {
+          res.writeHead(200);
+          res.end();
+        },
+      );
+
+      // Exhaust the limit (60/min)
+      const results = [];
+      for (let i = 0; i < 65; i++) {
+        results.push(
+          request(app).post('/mcp').send({ jsonrpc: '2.0', method: 'initialize', id: i }),
+        );
+      }
+      const responses = await Promise.all(results);
+
+      const limited = responses.find((res) => res.status === 429);
+      expect(limited).toBeDefined();
+      expect(limited?.body).toHaveProperty('error');
     });
   });
 

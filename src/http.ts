@@ -11,6 +11,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request, Response } from 'express';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 
 import { registerAllTools } from './tools/index.js';
 
@@ -18,6 +19,18 @@ export const app = express();
 export const sessions = new Map<string, StreamableHTTPServerTransport>();
 
 app.use(express.json());
+
+// Rate limiting: MCP-specific (each request triggers upstream RIS API calls)
+export const mcpLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 60,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.headers['mcp-session-id'] as string) || req.ip || 'unknown',
+  message: { error: 'Zu viele Anfragen. Bitte später erneut versuchen.' },
+  validate: { keyGeneratorIpFallback: false },
+});
+app.use('/mcp', mcpLimiter);
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {
@@ -43,7 +56,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // Create new session
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+    sessionIdGenerator: (): string => crypto.randomUUID(),
   });
   const server = new McpServer({ name: 'ris-mcp', version: '1.0.0' });
 
