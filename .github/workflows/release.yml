@@ -99,7 +99,7 @@ jobs:
           body_path: release-notes.md
 
       - name: Publish to npm
-        run: pnpm publish --provenance --access public --no-git-checks
+        run: npm publish --provenance --access public
 
   deploy-lightsail:
     name: Deploy to Lightsail
