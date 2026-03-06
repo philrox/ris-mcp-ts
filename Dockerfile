@@ -15,7 +15,7 @@ RUN corepack enable pnpm
 WORKDIR /app
 ENV HUSKY=0
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=builder /app/dist/ ./dist/
 
 EXPOSE 3000
