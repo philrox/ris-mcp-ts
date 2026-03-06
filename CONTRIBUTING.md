@@ -5,7 +5,7 @@ Thank you for your interest in contributing to the RIS MCP Server! This guide wi
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 20.0.0
-- npm (comes with Node.js)
+- [pnpm](https://pnpm.io/)
 
 ## Getting Started
 
@@ -19,19 +19,19 @@ Thank you for your interest in contributing to the RIS MCP Server! This guide wi
 2. Install dependencies:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Build the project:
 
    ```bash
-   npm run build
+   pnpm run build
    ```
 
 4. Verify everything works:
 
    ```bash
-   npm run check
+   pnpm run check
    ```
 
 ## Architecture Overview
@@ -61,23 +61,23 @@ src/
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start with hot reload (tsx) |
-| `npm run build` | Compile TypeScript |
-| `npm start` | Run compiled version |
-| `npm run check` | Run typecheck + lint + format check + tests |
-| `npm run inspect` | Test with MCP Inspector (see below) |
+| `pnpm run dev` | Start with hot reload (tsx) |
+| `pnpm run build` | Compile TypeScript |
+| `pnpm start` | Run compiled version |
+| `pnpm run check` | Run typecheck + lint + format check + tests |
+| `pnpm run inspect` | Test with MCP Inspector (see below) |
 
 ### Useful shortcuts
 
-- **`npm run dev`** — Fastest way to test changes during development
-- **`npm run check`** — Run this before committing to catch all issues at once
+- **`pnpm run dev`** — Fastest way to test changes during development
+- **`pnpm run check`** — Run this before committing to catch all issues at once
 
 ### MCP Inspector
 
 The [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) is a web-based UI for testing MCP servers interactively:
 
 ```bash
-npm run inspect
+pnpm run inspect
 ```
 
 This opens a browser where you can:
@@ -87,7 +87,7 @@ This opens a browser where you can:
 
 ### Testing with MCP Clients
 
-To test your local changes in a real client (Claude Desktop, VS Code, etc.), point the config to your local build instead of the npm package:
+To test your local changes in a real client (Claude Desktop, VS Code, etc.), point the config to your local build instead of the published package:
 
 **Claude Desktop** (`claude_desktop_config.json`):
 
@@ -108,7 +108,7 @@ To test your local changes in a real client (Claude Desktop, VS Code, etc.), poi
 claude mcp add ris-dev -- node /absolute/path/to/ris-mcp-ts/dist/index.js
 ```
 
-Run `npm run build` after each change (or use `npm run dev` in a separate terminal for hot reload during development).
+Run `pnpm run build` after each change (or use `pnpm run dev` in a separate terminal for hot reload during development).
 
 ## Code Conventions
 
@@ -130,10 +130,10 @@ This project uses **Prettier** for formatting and **ESLint** for linting. Pre-co
 
 | Command | Description |
 |---------|-------------|
-| `npm run format` | Format all source files with Prettier |
-| `npm run lint` | Run ESLint on source files |
-| `npm run lint:fix` | Run ESLint with auto-fix |
-| `npm run format:check` | Check formatting without modifying files |
+| `pnpm run format` | Format all source files with Prettier |
+| `pnpm run lint` | Run ESLint on source files |
+| `ppnpm run lint:fix` | Run ESLint with auto-fix |
+| `ppnpm run format:check` | Check formatting without modifying files |
 
 You don't need to run these manually before committing — the pre-commit hook handles it. But they're useful if you want to fix issues across the codebase.
 
@@ -143,10 +143,10 @@ Tests use [Vitest](https://vitest.dev/) and are located in `src/__tests__/`.
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run all tests |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with coverage report |
-| `npm run test:integration` | Run integration tests (requires network) |
+| `pnpm test` | Run all tests |
+| `pnpm run test:watch` | Run tests in watch mode |
+| `pnpm run test:coverage` | Run tests with coverage report |
+| `pnpm run test:integration` | Run integration tests (requires network) |
 
 ### Guidelines
 
@@ -222,7 +222,7 @@ Create `src/__tests__/<name>.test.ts` — mock HTTP calls, don't hit the real AP
 ### 4. Run checks
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 ## Submitting Changes
@@ -236,7 +236,7 @@ npm run check
 2. Make your changes and ensure all checks pass:
 
    ```bash
-   npm run check
+   pnpm run check
    ```
 
 3. Commit your changes following [Conventional Commits](https://www.conventionalcommits.org/):
@@ -269,7 +269,7 @@ Found a bug or have a feature request? Please [open an issue](../../issues) usin
 Releases are automated via GitHub Actions with [OIDC trusted publishing](https://docs.npmjs.com/trusted-publishers/) — no npm tokens required.
 
 ```bash
-npm version patch   # or minor / major
+pnpm version patch   # or minor / major
 git push && git push --tags
 ```
 

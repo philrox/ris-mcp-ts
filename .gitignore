@@ -11,4 +11,5 @@ coverage/
 docs/*.pdf
 specs/
 .mcpregistry_*
+package-lock.json
 

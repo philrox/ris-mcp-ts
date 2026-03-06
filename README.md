@@ -46,13 +46,13 @@ The server translates these natural language requests into structured API calls 
 Run directly without installation:
 
 ```bash
-npx ris-mcp-ts
+pnpm dlx ris-mcp-ts
 ```
 
 Or install globally:
 
 ```bash
-npm install -g ris-mcp-ts
+pnpm add -g ris-mcp-ts
 ```
 
 ## Configuration
@@ -76,6 +76,8 @@ Add to your Claude Desktop config (Settings > Developer > Edit Config):
 ```
 
 > **Note:** The "Add custom connector" UI in Claude Desktop only supports remote MCP servers (HTTP/SSE). Local stdio servers like this one must be configured via the JSON file.
+>
+> **Tip:** You can also use `pnpm dlx` instead of `npx` in all configuration examples if you prefer pnpm.
 
 ### Claude Code
 
@@ -136,7 +138,8 @@ Add to your Windsurf MCP config at `~/.codeium/windsurf/mcp_config.json`:
 Any MCP-compatible client can connect via stdio transport:
 
 ```bash
-npx ris-mcp-ts
+npx -y ris-mcp-ts
+# or: pnpm dlx ris-mcp-ts
 ```
 
 ## Available Tools
@@ -475,20 +478,20 @@ Search state ordinance gazettes (Verordnungsblätter).
 ```bash
 git clone https://github.com/philrox/ris-mcp-ts.git
 cd ris-mcp-ts
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 ### Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start with hot reload (tsx) |
-| `npm run build` | Compile TypeScript |
-| `npm start` | Run compiled version |
-| `npm test` | Run all tests |
-| `npm run check` | Typecheck + lint + format check + tests |
-| `npm run inspect` | Launch MCP Inspector for manual testing |
+| `pnpm run dev` | Start with hot reload (tsx) |
+| `pnpm run build` | Compile TypeScript |
+| `pnpm start` | Run compiled version |
+| `pnpm test` | Run all tests |
+| `pnpm run check` | Typecheck + lint + format check + tests |
+| `pnpm run inspect` | Launch MCP Inspector for manual testing |
 
 ### Project Structure
 

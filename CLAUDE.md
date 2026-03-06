@@ -5,44 +5,44 @@ MCP Server for the Austrian Legal Information System (RIS - Rechtsinformationssy
 ## Quick Start
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 ## Development Commands
 
 ```bash
-npm run dev             # Start with tsx (hot reload, stdio)
-npm run dev:http        # Start HTTP server with tsx (hot reload)
-npm run build           # Compile TypeScript (runs typecheck first)
-npm start               # Run compiled version (stdio)
-npm run start:http      # Run HTTP server (Streamable HTTP transport)
-npm run check           # Run typecheck + lint + format:check + tests
+pnpm run dev             # Start with tsx (hot reload, stdio)
+pnpm run dev:http        # Start HTTP server with tsx (hot reload)
+pnpm run build           # Compile TypeScript (runs typecheck first)
+pnpm start               # Run compiled version (stdio)
+pnpm run start:http      # Run HTTP server (Streamable HTTP transport)
+pnpm run check           # Run typecheck + lint + format:check + tests
 ```
 
 ## Testing
 
 ```bash
-npm test                # Run all unit tests (620 tests, 11 files)
-npm run test:watch      # Run tests in watch mode
-npm run test:coverage   # Tests with V8 coverage report
-npm run test:integration # Integration tests (separate config, requires network)
+pnpm test                # Run all unit tests (620 tests, 11 files)
+pnpm run test:watch      # Run tests in watch mode
+pnpm run test:coverage   # Tests with V8 coverage report
+pnpm run test:integration # Integration tests (separate config, requires network)
 ```
 
 ### Manual Testing with MCP Inspector
 
 ```bash
-npm run inspect
+pnpm run inspect
 ```
 
 ## Code Quality
 
 ```bash
-npm run typecheck       # TypeScript strict mode check
-npm run lint            # ESLint (strict + stylistic rules)
-npm run lint:fix        # ESLint with auto-fix
-npm run format          # Prettier format
-npm run format:check    # Prettier check
+pnpm run typecheck       # TypeScript strict mode check
+pnpm run lint            # ESLint (strict + stylistic rules)
+pnpm run lint:fix        # ESLint with auto-fix
+pnpm run format          # Prettier format
+pnpm run format:check    # Prettier check
 ```
 
 Pre-commit hooks (Husky) auto-run `prettier --write` and `eslint --fix` on staged `.ts` files. Commits must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `chore:`, etc.) — enforced by commitlint.
@@ -136,7 +136,7 @@ Each tool lives in `src/tools/<name>.ts` and exports a `register<Name>Tool(serve
 ## CI/CD
 
 GitHub Actions runs on push/PR to main:
-- **CI**: Matrix test (Node 18, 20, 22) → `npm run check` + coverage
+- **CI**: Matrix test (Node 20, 22) → `pnpm run check` + coverage
 - **Release**: Tag push (`v*`) → check + build + GitHub Release + npm publish + **Lightsail deploy**
 - **CodeQL**: Weekly security scanning
 
@@ -171,7 +171,7 @@ No manual deployment needed. The release workflow handles: npm publish → Docke
 - `express.json()` parses body → must pass `req.body` as 3rd arg to `transport.handleRequest()`
 - `sessionIdGenerator: () => crypto.randomUUID()` for stateful sessions
 - `sessions.set()` called AFTER `handleRequest()` (SDK generates sessionId during initialize)
-- Dockerfile uses `HUSKY=0` env + `--ignore-scripts` for production npm ci
+- Dockerfile uses `HUSKY=0` env + `--frozen-lockfile` for production pnpm install
 
 ## MCP Tools (12)
 
