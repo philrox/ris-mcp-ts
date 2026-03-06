@@ -132,8 +132,8 @@ This project uses **Prettier** for formatting and **ESLint** for linting. Pre-co
 |---------|-------------|
 | `pnpm run format` | Format all source files with Prettier |
 | `pnpm run lint` | Run ESLint on source files |
-| `ppnpm run lint:fix` | Run ESLint with auto-fix |
-| `ppnpm run format:check` | Check formatting without modifying files |
+| `pnpm run lint:fix` | Run ESLint with auto-fix |
+| `pnpm run format:check` | Check formatting without modifying files |
 
 You don't need to run these manually before committing — the pre-commit hook handles it. But they're useful if you want to fix issues across the codebase.
 

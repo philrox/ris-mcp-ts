@@ -8,7 +8,7 @@ Brief description of the changes.
 - [ ] Documentation update
 
 ## Checklist
-- [ ] I have run `npm run check` (typecheck + lint + format + tests)
+- [ ] I have run `pnpm run check` (typecheck + lint + format + tests)
 - [ ] I have added tests that prove my fix/feature works
 - [ ] I have updated the documentation if needed
 - [ ] My changes generate no new warnings

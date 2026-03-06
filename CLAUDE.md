@@ -137,7 +137,7 @@ Each tool lives in `src/tools/<name>.ts` and exports a `register<Name>Tool(serve
 
 GitHub Actions runs on push/PR to main:
 - **CI**: Matrix test (Node 20, 22) → `pnpm run check` + coverage
-- **Release**: Tag push (`v*`) → check + build + GitHub Release + npm publish + **Lightsail deploy**
+- **Release**: Tag push (`v*`) → check + build + GitHub Release + pnpm publish + **Lightsail deploy**
 - **CodeQL**: Weekly security scanning
 
 ### Deployment Flow
@@ -146,7 +146,7 @@ GitHub Actions runs on push/PR to main:
 feature branch → PR → merge to main → git tag v1.x.x → push tag → CI auto-deploys
 ```
 
-No manual deployment needed. The release workflow handles: npm publish → Docker build → Lightsail push → deployment creation.
+No manual deployment needed. The release workflow handles: pnpm publish → Docker build → Lightsail push → deployment creation.
 
 ## Hosting (AWS Lightsail)
 

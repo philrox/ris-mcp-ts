@@ -4,8 +4,8 @@
  * These tests hit the live Austrian Legal Information System API at
  * https://data.bka.gv.at/ris/api/v2.6/ and require network access.
  *
- * They are NOT included in the standard `npm test` run.
- * Run explicitly with: npm run test:integration
+ * They are NOT included in the standard `pnpm test` run.
+ * Run explicitly with: pnpm run test:integration
  *
  * Keep assertions focused on response structure, not exact content
  * (which changes as laws are amended).
