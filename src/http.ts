@@ -52,6 +52,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
       await existing.handleRequest(req, res, req.body);
       return;
     }
+    // Session expired or server restarted — client must reinitialize
+    res.status(404).json({ error: 'Session nicht gefunden. Bitte neu verbinden.' });
+    return;
   }
 
   // Create new session
